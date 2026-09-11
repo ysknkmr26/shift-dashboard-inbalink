@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シフト統合ダッシュボード </title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom scrollbar for sleek UI */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #fca5a5;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #f87171;
+    }
+    @media print {
+      header, #toast, .no-print, button, #memberBadgesContainer a, #debugModal, #addMemberModal, #syncConfigModal, #shareModal {
+        display: none !important;
+      }
+      body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: 10pt !important;
+      }
+      main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+      }
+      th, td {
+        border: 1px solid #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white border-b border-rose-100 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 via-rose-600 to-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+            <i data-lucide="calendar-range" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-extrabold text-slate-900 tracking-tight">シフト統合ダッシュボード</h1>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse mr-1"></span>
+                リアルタイム自動連携
+              </span>
+            </div>
+            <p class="text-xs text-slate-500"> Googleスプレッドシート直結管理（13:00〜18:00・30分単位）</p>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center flex-wrap gap-2">
+          <!-- Refresh Button -->
+          <button id="refreshBtn" onclick="handleRefresh()" class="inline-flex items-center px-3.5 py-2 border border-rose-300 text-xs sm:text-sm font-semibold rounded-lg text-white bg-rose-600 hover:bg-rose-700 active:scale-95 transition shadow-xs">
+            <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4 sm:mr-1.5 text-white"></i>
+            <span>最新データに更新</span>
+          </button>
+
+          <!-- Sheet Data Diagnostics Button -->
+          <button onclick="openModal('debugModal')" class="inline-flex items-center px-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-rose-50/50 hover:border-rose-200 transition shadow-xs" title="シートから取得した生データと認識状況を確認">
+            <i data-lucide="file-search" class="w-4 h-4 sm:mr-1.5 text-rose-600"></i>
+            <span class="hidden sm:inline">同期データ診断</span>
+          </button>
+
+          <!-- Share & Print Button -->
+          <button onclick="openShareModal()" class="inline-flex items-center px-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-100 active:scale-95 transition shadow-xs">
+            <i data-lucide="share-2" class="w-4 h-4 sm:mr-1.5 text-slate-700"></i>
+            <span>共有・印刷</span>
+          </button>
+
+          <!-- Auto Sync Settings Button -->
+          <button onclick="openModal('syncConfigModal')" class="inline-flex items-center px-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-rose-50/50 hover:border-rose-200 transition shadow-xs" title="Googleスプレッドシートやフォルダ連携の自動同期設定">
+            <i data-lucide="link" class="w-4 h-4 sm:mr-1.5 text-rose-600"></i>
+            <span class="hidden sm:inline">自動同期設定</span>
+          </button>
+
+          <!-- Add Member Button -->
+          <button onclick="openModal('addMemberModal')" class="inline-flex items-center px-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium rounded-lg text-slate-700 bg-white hover:bg-rose-50/50 hover:border-rose-200 transition shadow-xs">
+            <i data-lucide="user-plus" class="w-4 h-4 sm:mr-1.5 text-rose-600"></i>
+            <span class="hidden sm:inline">スタッフ追加</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Toast Notification Banner -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform transition-all duration-300 opacity-0 translate-y-[-10px] hidden">
+      <div class="bg-slate-900 text-white text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center space-x-2.5 border border-rose-500/30">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-rose-400"></i>
+        <span id="toastMsg">最新データを反映しました</span>
+      </div>
+    </div>
+
+    <!-- Status / Overview Bar -->
+    <div class="bg-gradient-to-r from-rose-50 via-red-50/70 to-orange-50/40 border border-rose-100 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+      <div class="flex items-center space-x-3.5">
+        <div class="p-2.5 bg-white rounded-xl shadow-xs text-rose-600 shrink-0 border border-rose-100">
+          <i data-lucide="zap" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            シフト同期モード: <span class="text-rose-700 font-semibold" id="lastUpdatedLabel">Googleスプレッドシート直接同期（JSONP方式）</span>
+          </div>
+          <p class="text-xs text-slate-600 mt-0.5" id="syncStatusSummary">
+            登録済みスタッフのスプレッドシートと直結しています。「最新データに更新」を押すと最新値を取り込みます。
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center flex-wrap gap-2 self-start md:self-auto" id="memberBadgesContainer">
+        <!-- Dynamically rendered active staff badges -->
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="kpiContainer">
+      <!-- Populated dynamically -->
+    </div>
+
+    <!-- Main View Section: Schedule Table & Overlap Timeline -->
+    <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+      <!-- Table Header & Controls Bar -->
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <!-- Left: Staff filter -->
+        <div class="flex items-center space-x-2">
+          <label for="memberFilter" class="text-xs font-semibold text-slate-500">絞り込み:</label>
+          <select id="memberFilter" onchange="renderSchedule()" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500">
+            <option value="all">全員を表示</option>
+          </select>
+        </div>
+
+        <!-- Center: Week Navigation -->
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200/80">
+          <!-- Month Selector Dropdown -->
+          <div class="flex items-center gap-1">
+            <select id="monthQuickSelect" onchange="jumpToSelectedMonth(this.value)" class="text-xs font-bold text-rose-700 bg-white border border-rose-200 rounded-lg px-2 py-1 shadow-2xs focus:outline-none focus:ring-1 focus:ring-rose-500">
+              <option value="2026-08">2026年8月</option>
+              <option value="2026-09" selected>2026年9月</option>
+              <option value="2026-10">2026年10月</option>
+              <option value="2026-11">2026年11月</option>
+              <option value="2026-12">2026年12月</option>
+              <option value="2027-01">2027年1月</option>
+            </select>
+          </div>
+
+          <div class="flex items-center space-x-1">
+            <button onclick="changeWeek(-1)" class="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition" title="前週">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="resetToCurrentWeek()" class="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-white rounded-lg transition" title="今週に戻る">
+              今週
+            </button>
+            <button onclick="changeWeek(1)" class="p-1.5 rounded-lg hover:bg-white text-slate-600 hover:text-slate-900 transition" title="次週">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <span id="currentWeekRangeLabel" class="text-xs font-bold text-slate-800 px-2.5 py-1 bg-white rounded-lg shadow-2xs border border-rose-100/50">
+            2026年9月7日 〜 9月13日
+          </span>
+        </div>
+
+        <!-- Right: View Modes -->
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl">
+            <button id="viewBtnTable" onclick="switchView('table')" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition">
+              週間一覧
+            </button>
+            <button id="viewBtnTimeline" onclick="switchView('timeline')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-900 transition">
+              タイムライン (13-18時)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 1: Weekly Table View -->
+      <div id="weeklyTableView" class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="bg-slate-50/80 text-xs font-bold text-slate-500 border-b border-slate-200">
+              <th class="p-3.5 w-44">スタッフ名</th>
+              <th class="p-3.5 text-center day-col-0">月</th>
+              <th class="p-3.5 text-center day-col-1">火</th>
+              <th class="p-3.5 text-center day-col-2">水</th>
+              <th class="p-3.5 text-center day-col-3">木</th>
+              <th class="p-3.5 text-center day-col-4">金</th>
+              <th class="p-3.5 text-center day-col-5 text-rose-500 bg-rose-50/30">土</th>
+              <th class="p-3.5 text-center day-col-6 text-red-600 bg-red-50/40">日</th>
+              <th class="p-3.5 text-center w-28 bg-slate-100/60">週合計時間</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleTableBody" class="divide-y divide-slate-100 text-sm">
+            <!-- Dynamically populated rows -->
+          </tbody>
+          <tfoot id="scheduleTableFoot" class="bg-slate-50/90 border-t-2 border-slate-200">
+            <!-- Dynamically populated daily summary counts -->
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- View 2: Detailed Hourly Overlap Timeline (13:00 - 18:00) -->
+      <div id="timelineView" class="hidden p-4 sm:p-6 space-y-4">
+        <div class="flex items-center justify-between text-xs text-slate-500 mb-2 pb-2 border-b border-slate-100">
+          <div class="flex items-center gap-3" id="timelineLegend">
+            <!-- Dynamically populated legend -->
+          </div>
+          <span class="text-slate-400">※ 13:00〜18:00の稼働状況を30分刻みで可視化</span>
+        </div>
+        <div class="space-y-3" id="timelineList">
+          <!-- Dynamically populated timeline bars per day -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Operating Notes & Team Status -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="analysisNotes">
+      <!-- Populated dynamically -->
+    </div>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal 0: Data Diagnostics / Debug Modal -->
+  <div id="debugModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+            <i data-lucide="file-search" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Googleスプレッドシート取得・認識診断</h2>
+            <p class="text-xs text-slate-500">シートから読み取った実際の行データとシフト解析結果</p>
+          </div>
+        </div>
+        <button onclick="closeModal('debugModal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+        <span>シートに新しいデータを記入したら、下の「診断を再実行」を押してください。</span>
+        <button onclick="handleRefresh()" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg font-bold text-xs hover:bg-rose-700 transition">
+          再取得を実行
+        </button>
+      </div>
+
+      <div id="debugContent" class="space-y-4">
+        <!-- Dynamically populated debug logs and raw data preview -->
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end">
+        <button onclick="closeModal('debugModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Add New Member -->
+  <div id="addMemberModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+            <i data-lucide="user-plus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">新スタッフの追加</h2>
+            <p class="text-xs text-slate-500">増員時のシフト枠を追加作成します</p>
+          </div>
+        </div>
+        <button onclick="closeModal('addMemberModal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">スタッフ名</label>
+          <input type="text" id="newMemberName" placeholder="例: 佐藤さん" class="w-full text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">スプレッドシートURL (任意)</label>
+          <input type="text" id="newMemberUrl" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">表示テーマカラー</label>
+          <select id="newMemberColor" class="w-full text-xs px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500">
+            <option value="#e11d48">ローズレッド</option>
+            <option value="#dc2626">ルビーレッド</option>
+            <option value="#ea580c">オレンジコーラル</option>
+            <option value="#991b1b">ディープワイン</option>
+            <option value="#db2777">ピンクレッド</option>
+            <option value="#d97706">ウォームアンバー</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end space-x-2 pt-4 border-t border-slate-100">
+        <button onclick="closeModal('addMemberModal')" class="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
+          キャンセル
+        </button>
+        <button onclick="addNewStaffMember()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white rounded-xl shadow-xs transition">
+          追加する
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Auto-Sync Configuration Modal -->
+  <div id="syncConfigModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+            <i data-lucide="link" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">自動同期の設定</h2>
+            <p class="text-xs text-slate-500">Googleスプレッドシートや共有フォルダとの連携設定</p>
+          </div>
+        </div>
+        <button onclick="closeModal('syncConfigModal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div class="p-3 bg-rose-50/80 rounded-xl border border-rose-100 text-xs text-rose-950">
+          <p class="font-bold flex items-center gap-1 text-rose-800">
+            <i data-lucide="info" class="w-4 h-4 text-rose-600"></i> 月別タブ（10月・11月…）の自動追従に対応しています
+          </p>
+          <p class="mt-1 text-slate-600 leading-relaxed">
+            スプレッドシート内で月ごとに「10月」「11月」といったタブを作成して提出されても、カレンダーで選択中の月に合わせて自動的に対象タブを検出して取得します。
+          </p>
+        </div>
+
+        <div class="space-y-3" id="sheetUrlInputsContainer">
+          <!-- Dynamically populated URL and tab inputs for each staff -->
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-between pt-4 border-t border-slate-100">
+        <button onclick="clearSyncSettings()" class="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium">
+          自動設定を初期化
+        </button>
+        <div class="flex items-center space-x-2">
+          <button onclick="closeModal('syncConfigModal')" class="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
+            閉じる
+          </button>
+          <button onclick="saveSyncSettingsAndRun()" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white rounded-xl shadow-md shadow-rose-600/25 transition active:scale-95">
+            保存して同期実行
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Share & Export / Print Modal -->
+  <div id="shareModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar space-y-5">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+            <i data-lucide="share-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">シフト表の共有・配布</h2>
+            <p class="text-xs text-slate-500">スタッフや関係者への共有方法を選択してください</p>
+          </div>
+        </div>
+        <button onclick="closeModal('shareModal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Sharing Methods Grid -->
+      <div class="space-y-3.5">
+        <!-- Method 1: Web Link Copy -->
+        <div class="p-4 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-rose-950 flex items-center gap-1.5">
+              <i data-lucide="link" class="w-4 h-4 text-rose-600"></i> ① Webリンクで共有（URL共有）
+            </span>
+            <span class="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">最もおすすめ</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            このダッシュボードをホスティングしている場合、URLを共有するだけでスマホやPCからいつでも最新状況を閲覧できます。
+          </p>
+          <div class="flex gap-2">
+            <input type="text" id="shareUrlInput" readonly
+              class="flex-1 text-xs px-3 py-2 bg-white border border-rose-200 rounded-xl font-mono text-slate-700 select-all focus:outline-none focus:ring-1 focus:ring-rose-500">
+            <button onclick="copyShareUrl()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 active:scale-95">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              URLをコピー
+            </button>
+          </div>
+        </div>
+
+        <!-- Method 2: Print / PDF Export -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <i data-lucide="printer" class="w-4 h-4 text-slate-700"></i> ② A4印刷 / PDFとして保存
+            </span>
+            <span class="text-[10px] bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded-full">紙・PDF配布</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            不要なボタンや操作枠を除外し、週間シフト表とサマリーだけをA4横向きに最適化したレイアウトで印刷・PDF保存します。
+          </p>
+          <button onclick="printShiftReport()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs active:scale-95">
+            <i data-lucide="file-down" class="w-4 h-4"></i>
+            印刷プレビュー・PDF保存を開く
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end">
+        <button onclick="closeModal('shareModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    const COLOR_PALETTES = [
+      { name: 'Rose',     hex: '#e11d48', bg: '#fff1f2', border: '#fecdd3', text: '#9f1239' },
+      { name: 'Red',      hex: '#dc2626', bg: '#fef2f2', border: '#fee2e2', text: '#991b1b' },
+      { name: 'Orange',   hex: '#ea580c', bg: '#fff7ed', border: '#ffedd5', text: '#9a3412' },
+      { name: 'Wine',     hex: '#991b1b', bg: '#fdf2f2', border: '#fecaca', text: '#7f1d1d' },
+      { name: 'Pink',     hex: '#db2777', bg: '#fdf2f8', border: '#fce7f3', text: '#9d174d' },
+      { name: 'Amber',    hex: '#d97706', bg: '#fffbeb', border: '#fde68a', text: '#92400e' }
+    ];
+
+    let staffList = [
+      {
+        id: 'machida',
+        name: '町田さん',
+        color: '#2563eb', // Blue
+        bg: '#eff6ff',
+        text: '#1e3a8a',
+        badge: 'bg-blue-100 text-blue-800',
+        url: 'https://docs.google.com/spreadsheets/d/1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc/edit?gid=354556482#gid=354556482',
+        tabRule: 'auto'
+      },
+      {
+        id: 'yamanaka',
+        name: '山中さん',
+        color: '#ea580c', // Orange
+        bg: '#fff7ed',
+        text: '#9a3412',
+        badge: 'bg-orange-100 text-orange-800',
+        url: 'https://docs.google.com/spreadsheets/d/1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM/edit?gid=712987012#gid=712987012',
+        tabRule: 'auto'
+      }
+    ];
+
+    // Current week offset & base start date (Monday Sep 7, 2026)
+    let currentWeekOffset = 0;
+    let baseStartDate = new Date(2026, 8, 7); // Mon Sep 7, 2026
+    let activeView = 'table';
+
+    let shiftData = {
+      machida: {},
+      yamanaka: {}
+    };
+    let lastSyncDiagnostics = {};
+
+    function extractSpreadsheetId(url) {
+      if (!url) return null;
+      const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1] : null;
+    }
+
+    function extractGid(url) {
+      if (!url) return null;
+      const match = url.match(/[#&?]gid=([0-9]+)/);
+      return match ? match[1] : null;
+    }
+
+    /**
+     * Fetch Google Spreadsheet via Google Visualization API using JSONP.
+     * Bypasses all browser CORS restrictions completely without proxy.
+     */
+    function fetchGoogleSpreadsheetJSONP(sheetId, sheetTab = null) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gviz_cb_' + Math.random().toString(36).substring(2, 9);
+        const script = document.createElement('script');
+
+        let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}`;
+        if (sheetTab) {
+          if (sheetTab.startsWith('gid=')) {
+            url += `&gid=${sheetTab.replace('gid=', '')}`;
+          } else {
+            url += `&sheet=${encodeURIComponent(sheetTab)}`;
+          }
+        }
+
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error(`タイムアウト: シート「${sheetTab || 'デフォルト'}」の応答がありません`));
+        }, 8000);
+
+        function cleanup() {
+          clearTimeout(timeoutId);
+          if (script.parentNode) script.parentNode.removeChild(script);
+          delete window[callbackName];
+        }
+
+        window[callbackName] = function(response) {
+          cleanup();
+          if (!response) {
+            reject(new Error('レスポンスが空です'));
+            return;
+          }
+          if (response.status === 'error') {
+            const msg = (response.errors && response.errors[0]) ? response.errors[0].message : '不明なエラー';
+            reject(new Error(`Googleエラー: ${msg}`));
+            return;
+          }
+          resolve(response.table);
+        };
+
+        script.onerror = function() {
+          cleanup();
+          reject(new Error('通信エラー（共有リンクのアクセス権をご確認ください）'));
+        };
+
+        script.src = url;
+        document.body.appendChild(script);
+      });
+    }
+
+    /**
+     * Flexible parser for both vertical list layouts and horizontal calendar layouts.
+     */
+    function parseGvizTable(table, currentYear, currentMonth) {
+      if (!table || !table.rows || table.rows.length === 0) {
+        return { records: {}, rawRowsCount: 0, preview: [] };
+      }
+
+      const records = {};
+      const preview = [];
+      const grid = [];
+      
+      table.rows.forEach((row) => {
+        const rowVals = [];
+        (row.c || []).forEach((cell) => {
+          let val = '';
+          if (cell) {
+            if (cell.f !== undefined && cell.f !== null) val = String(cell.f).trim();
+            else if (cell.v !== undefined && cell.v !== null) val = String(cell.v).trim();
+          }
+          rowVals.push(val);
+        });
+        grid.push(rowVals);
+      });
+
+      if (grid.length === 0) return { records: {}, rawRowsCount: 0, preview: [] };
+
+      // Strategy 1: Horizontal Calendar Layout (Aggressive Columnar Scan)
+      let dateColMap = {}; // column index -> dateKey
+      let dateRowIdx = -1;
+      let maxDates = 0;
+
+      // Find the row containing dates (e.g. 1, 2, 3... or 9/1, 9/2...)
+      for (let r = 0; r < Math.min(10, grid.length); r++) {
+        let tempMap = {};
+        let count = 0;
+        grid[r].forEach((cell, cIdx) => {
+          const d = normalizeDateString(cell, currentYear, currentMonth);
+          if (d) {
+            tempMap[cIdx] = d;
+            count++;
+          }
+        });
+        if (count > maxDates && count >= 5) { // If 5 or more dates are found in a row, it's a header
+          maxDates = count;
+          dateColMap = tempMap;
+          dateRowIdx = r;
+        }
+      }
+
+      // If Horizontal calendar header detected
+      if (maxDates >= 5) {
+        Object.keys(dateColMap).forEach(cIdx => {
+          const dateKey = dateColMap[cIdx];
+          
+          // Scan downwards in this specific column to find the shift symbol ('○', '13:00-18:00', etc.)
+          for (let r = dateRowIdx + 1; r < grid.length; r++) {
+            const cellVal = String(grid[r][cIdx] || '').trim();
+            if (!cellVal) continue;
+
+            let startVal = '-';
+            let endVal = '-';
+            let isOff = true;
+            let note = '';
+
+            // Map symbols to standardized time block
+            if (cellVal === '○' || cellVal === '〇' || cellVal === '◎' || cellVal.includes('出勤')) {
+              startVal = '13:00';
+              endVal = '18:00';
+              isOff = false;
+            } else if (cellVal.includes(':') || cellVal.includes('-') || cellVal.includes('〜')) {
+              const parsed = parseCombinedTime(cellVal);
+              if (parsed.start !== '-' && parsed.end !== '-') {
+                startVal = parsed.start;
+                endVal = parsed.end;
+                isOff = false;
+              }
+            } else if (cellVal === '×' || cellVal.includes('休')) {
+              isOff = true;
+              note = '休み';
+            }
+
+            // Record the shift if valid
+            if (!isOff || note === '休み') {
+              let hours = !isOff ? calculateShiftHours(startVal, endVal) : 0;
+              records[dateKey] = { date: dateKey, start: startVal, end: endVal, hours, note, isOff };
+              
+              if (preview.length < 15) {
+                preview.push({
+                  rawDate: `列${parseInt(cIdx)+1}: ${cellVal}`,
+                  dateKey,
+                  start: startVal,
+                  end: endVal,
+                  hours,
+                  note: note,
+                  status: isOff ? '休み' : `${hours}h`
+                });
+              }
+              break; // Found the shift for this date column, move to next column
+            }
+          }
+        });
+        
+        if (Object.keys(records).length > 0) {
+           return { records, rawRowsCount: grid.length, preview };
+        }
+      }
+
+      // Strategy 2: Vertical List Layout (Fallback)
+      let dateCol = -1;
+      let startCol = -1;
+      let endCol = -1;
+      let combinedTimeCol = -1;
+      let headerRowIndex = -1;
+
+      // Scan rows to find the header row containing "日付" or "Date"
+      for (let r = 0; r < Math.min(10, grid.length); r++) {
+        const row = grid[r];
+        row.forEach((cell, cIdx) => {
+          const s = String(cell).toLowerCase().trim();
+          if (s === '日付' || s.includes('date') || s.includes('月/日')) {
+            if (dateCol === -1) {
+              dateCol = cIdx;
+              headerRowIndex = r;
+            }
+          }
+        });
+        if (dateCol !== -1) {
+          // Once date column is found, look for start/end time columns in the same row
+          row.forEach((cell, cIdx) => {
+             const s = String(cell).toLowerCase().trim();
+             if (s.includes('開始') || s.includes('出勤') || s.includes('start') || s.includes('in')) startCol = cIdx;
+             if (s.includes('終了') || s.includes('退勤') || s.includes('end') || s.includes('out')) endCol = cIdx;
+             if (s.includes('時間') || s.includes('シフト') || s.includes('勤務時間')) {
+               if(cIdx !== startCol && cIdx !== endCol) combinedTimeCol = cIdx;
+             }
+          });
+          break;
+        }
+      }
+
+      // If no explicit header was found, use heuristics to find a column full of dates
+      if (dateCol === -1 && grid.length > 1) {
+        let dateCounts = {};
+        for (let r = 0; r < Math.min(10, grid.length); r++) {
+          const row = grid[r];
+          if(!row) continue;
+          for(let c = 0; c < row.length; c++) {
+            if (normalizeDateString(row[c], currentYear, currentMonth)) {
+              dateCounts[c] = (dateCounts[c] || 0) + 1;
+            }
+          }
+        }
+        let maxCount = 0;
+        for (let c in dateCounts) {
+          if (dateCounts[c] >= 2 && dateCounts[c] > maxCount) {
+            maxCount = dateCounts[c];
+            dateCol = parseInt(c);
+            headerRowIndex = 0; // Assume data starts from row 0 if no header found
+          }
+        }
+      }
+
+      if (dateCol !== -1) {
+        // Find start and end time columns based on heuristics if headers weren't found
+        if (startCol === -1 || endCol === -1) {
+          for (let r = (headerRowIndex !== -1 ? headerRowIndex : 0); r < Math.min(10, grid.length); r++) {
+            const row = grid[r];
+            if (!row) continue;
+            for (let c = dateCol + 1; c < row.length; c++) {
+              const val = String(row[c]).trim();
+              if (val.includes(':') || (val.match(/^\d{1,2}$/) && Number(val) >= 8 && Number(val) <= 23)) {
+                if (startCol === -1) {
+                  startCol = c;
+                } else if (endCol === -1 && c !== startCol) {
+                  endCol = c;
+                  break;
+                }
+              }
+            }
+            if (startCol !== -1 && endCol !== -1) break;
+          }
+        }
+
+        // If we still don't have endCol, try adjacent column
+        if (startCol !== -1 && endCol === -1) {
+           endCol = startCol + 1;
+        }
+
+        const startR = (headerRowIndex !== -1) ? headerRowIndex + 1 : 0;
+        for (let r = startR; r < grid.length; r++) {
+          const row = grid[r];
+          if (!row || !row[dateCol]) continue;
+
+          // Attempt to parse date string
+          let rawDate = row[dateCol];
+          // Check if date looks like a valid date format, sometimes header rows span multiple rows or have merged cells
+          if(!rawDate || String(rawDate).trim() === '') continue;
+          
+          let dateKey = normalizeDateString(rawDate, currentYear, currentMonth);
+          if (!dateKey) {
+             // If normalization fails, it might be a malformed date or empty, try extracting just numbers
+             const numMatch = String(rawDate).match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+             if(numMatch) {
+               dateKey = `${numMatch[1]}-${String(numMatch[2]).padStart(2, '0')}-${String(numMatch[3]).padStart(2, '0')}`;
+             } else {
+                 continue;
+             }
+          }
+
+          let startVal = '-';
+          let endVal = '-';
+          let note = '';
+
+          // Extract values directly from specific columns
+          if (startCol !== -1 && row[startCol] !== undefined && row[startCol] !== null) {
+              startVal = sanitizeTime(String(row[startCol]));
+          }
+          if (endCol !== -1 && row[endCol] !== undefined && row[endCol] !== null) {
+              endVal = sanitizeTime(String(row[endCol]));
+          }
+
+          const rowText = row.join(' ');
+          let isOff = (startVal === '-' || endVal === '-' || startVal === '' || endVal === '');
+          if (rowText.includes('休') || rowText.includes('公休')) {
+            isOff = true;
+            note = '休み';
+          } else if (rowText.includes('出勤') || rowText.includes('○') || rowText.includes('13-18') || rowText.includes('可')) {
+            if (isOff) {
+              startVal = '13:00';
+              endVal = '18:00';
+              isOff = false;
+            }
+          }
+
+          let hours = 0;
+          if (!isOff && startVal !== '-' && endVal !== '-') {
+            hours = calculateShiftHours(startVal, endVal);
+          }
+
+          records[dateKey] = { date: dateKey, start: startVal, end: endVal, hours, note, isOff };
+
+          if (preview.length < 15) {
+            preview.push({
+              rawDate: row[dateCol],
+              dateKey,
+              start: startVal,
+              end: endVal,
+              hours,
+              note,
+              status: isOff ? '休み' : `${hours}h`
+            });
+          }
+        }
+      }
+
+      return { records, rawRowsCount: grid.length, preview };
+    }
+
+    function formatNumericTime(num) {
+        if(isNaN(num)) return '-';
+        const h = Math.floor(num);
+        const m = Math.round((num - h) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function normalizeDateString(raw, fallbackYear, fallbackMonth) {
+      if (raw === null || raw === undefined || raw === '') return null;
+      let s = String(raw).trim();
+
+      // Handle Google Date(year, month, day) format
+      const dateObjMatch = s.match(/Date\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (dateObjMatch) {
+        const y = dateObjMatch[1];
+        const m = String(parseInt(dateObjMatch[2], 10) + 1).padStart(2, '0');
+        const d = String(dateObjMatch[3]).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      // Remove Japanese day of week like (月), (火)
+      s = s.replace(/\([日月火水木金土]\)/g, '').trim();
+
+      // Format: 2026/09/07 or 2026-09-07 or 2026.09.07
+      const ymdMatch = s.match(/(\d{4})[\/\-\.年](\d{1,2})[\/\-\.月](\d{1,2})[日]?/);
+      if (ymdMatch) {
+        const y = ymdMatch[1];
+        const m = String(ymdMatch[2]).padStart(2, '0');
+        const d = String(ymdMatch[3]).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      
+      // Look for format like 2026-09-14 directly, very common in screenshots
+      const dashMatch = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if(dashMatch) {
+         return `${dashMatch[1]}-${dashMatch[2]}-${dashMatch[3]}`;
+      }
+
+      // Format: 9/7 or 9-7 or 9月7日 (without year)
+      const mdMatch = s.match(/^(\d{1,2})[\/\-\.月](\d{1,2})[日]?$/);
+      if (mdMatch) {
+        const y = fallbackYear || 2026;
+        const m = String(mdMatch[1]).padStart(2, '0');
+        const d = String(mdMatch[2]).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      // Format: Just day number like "7" or "7日"
+      const dMatch = s.match(/^(\d{1,2})[日]?$/);
+      if (dMatch) {
+        const y = fallbackYear || 2026;
+        const m = String(fallbackMonth || 9).padStart(2, '0');
+        const d = String(dMatch[1]).padStart(2, '0');
+        // Prevent false positives by ensuring day is 1-31
+        if (parseInt(d, 10) >= 1 && parseInt(d, 10) <= 31) {
+          return `${y}-${m}-${d}`;
+        }
+      }
+
+      return null;
+    }
+
+    function parseCombinedTime(val) {
+      if (!val) return { start: '-', end: '-' };
+      const s = String(val).replace('：', ':').replace('〜', '-').replace('~', '-').replace('ー', '-');
+      const parts = s.split('-');
+      if (parts.length >= 2) {
+        return {
+          start: sanitizeTime(parts[0]),
+          end: sanitizeTime(parts[1])
+        };
+      }
+      return { start: sanitizeTime(s), end: '-' };
+    }
+
+    function sanitizeTime(t) {
+      if (!t || t === '-' || t.toLowerCase() === 'off' || t.includes('休')) return '-';
+      let clean = String(t).replace('：', ':').trim();
+      const timeMatch = clean.match(/(\d{1,2}):(\d{1,2})/);
+      if (timeMatch) {
+        let h = timeMatch[1].padStart(2, '0');
+        let m = timeMatch[2].padStart(2, '0');
+        return `${h}:${m}`;
+      }
+      // Single hour like "13" -> "13:00"
+      const singleHourMatch = clean.match(/^(\d{1,2})$/);
+      if (singleHourMatch) {
+        let h = singleHourMatch[1].padStart(2, '0');
+        return `${h}:00`;
+      }
+      return clean;
+    }
+
+    function calculateShiftHours(start, end) {
+      try {
+        const [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return 0;
+
+        let sMins = sh * 60 + sm;
+        let eMins = eh * 60 + em;
+        if (eMins <= sMins) return 0;
+
+        let durationMins = eMins - sMins;
+        return Math.round((durationMins / 60) * 10) / 10;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function getActiveMonthInfo() {
+      const start = getWeekStartDate(currentWeekOffset);
+      const midWeek = new Date(start);
+      midWeek.setDate(midWeek.getDate() + 3); // Thursday represents the core of the week
+      return {
+        year: midWeek.getFullYear(),
+        month: midWeek.getMonth() + 1
+      };
+    }
+
+    function getWeekStartDate(offset = 0) {
+      const d = new Date(baseStartDate);
+      d.setDate(d.getDate() + (offset * 7));
+      return d;
+    }
+
+    function getWeekDates(offset = 0) {
+      const start = getWeekStartDate(offset);
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(start);
+        day.setDate(start.getDate() + i);
+        const y = day.getFullYear();
+        const m = String(day.getMonth() + 1).padStart(2, '0');
+        const dt = String(day.getDate()).padStart(2, '0');
+        days.push({
+          dateKey: `${y}-${m}-${dt}`,
+          year: y,
+          month: day.getMonth() + 1,
+          date: day.getDate(),
+          dayIndex: day.getDay() // 0 is Sunday, 1 is Monday...
+        });
+      }
+      return days;
+    }
+
+    function formatDateJapanese(dateKey) {
+      const [y, m, d] = dateKey.split('-').map(Number);
+      const dayObj = new Date(y, m - 1, d);
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${m}/${d} (${days[dayObj.getDay()]})`;
+    }
+
+    function updateWeekRangeLabel() {
+      const dates = getWeekDates(currentWeekOffset);
+      const start = dates[0];
+      const end = dates[6];
+      const label = document.getElementById('currentWeekRangeLabel');
+      if (label) {
+        label.textContent = `${start.year}年${start.month}月${start.date}日 〜 ${end.month}月${end.date}日`;
+      }
+
+      // Update table headers with day numbers
+      const dayHeaders = ['月', '火', '水', '木', '金', '土', '日'];
+      dates.forEach((d, idx) => {
+        const th = document.querySelector(`.day-col-${idx}`);
+        if (th) {
+          th.innerHTML = `
+            <div class="text-sm font-extrabold text-slate-800 mb-0.5">${d.month}/${d.date}</div>
+            <div class="text-xs font-bold ${idx === 5 ? 'text-blue-600' : idx === 6 ? 'text-rose-600' : 'text-slate-500'}">${dayHeaders[idx]}</div>
+          `;
+        }
+      });
+    }
+
+    function syncMonthSelectWithCurrentWeek() {
+      const info = getActiveMonthInfo();
+      const val = `${info.year}-${String(info.month).padStart(2, '0')}`;
+      const select = document.getElementById('monthQuickSelect');
+      if (select) {
+        select.value = val;
+      }
+    }
+
+    function changeWeek(diff) {
+      currentWeekOffset += diff;
+      updateWeekRangeLabel();
+      syncMonthSelectWithCurrentWeek();
+      renderSchedule();
+    }
+
+    function resetToCurrentWeek() {
+      currentWeekOffset = 0;
+      updateWeekRangeLabel();
+      syncMonthSelectWithCurrentWeek();
+      renderSchedule();
+    }
+
+    function jumpToSelectedMonth(yearMonthStr) {
+      const [year, month] = yearMonthStr.split('-').map(Number);
+      // Find the first Monday of the requested month
+      const targetDate = new Date(year, month - 1, 1);
+      const day = targetDate.getDay();
+      const diff = targetDate.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+      targetDate.setDate(diff);
+
+      const msDiff = targetDate.getTime() - baseStartDate.getTime();
+      currentWeekOffset = Math.round(msDiff / (7 * 24 * 60 * 60 * 1000));
+
+      updateWeekRangeLabel();
+      renderSchedule();
+      handleRefresh(); // Auto refresh for the target month
+    }
+
+    function switchView(viewName) {
+      activeView = viewName;
+      const tableSec = document.getElementById('weeklyTableView');
+      const timelineSec = document.getElementById('timelineView');
+      const btnTable = document.getElementById('viewBtnTable');
+      const btnTimeline = document.getElementById('viewBtnTimeline');
+
+      if (viewName === 'table') {
+        tableSec.classList.remove('hidden');
+        timelineSec.classList.add('hidden');
+        btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition';
+        btnTimeline.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-900 transition';
+      } else {
+        tableSec.classList.add('hidden');
+        timelineSec.classList.remove('hidden');
+        btnTimeline.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition';
+        btnTable.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-500 hover:text-slate-900 transition';
+      }
+      renderSchedule();
+    }
+
+    function renderSchedule() {
+      const dates = getWeekDates(currentWeekOffset);
+      const filterVal = document.getElementById('memberFilter') ? document.getElementById('memberFilter').value : 'all';
+      const visibleStaff = staffList.filter(s => filterVal === 'all' || s.id === filterVal);
+
+      // Render Table View Body
+      const tbody = document.getElementById('scheduleTableBody');
+      tbody.innerHTML = '';
+
+      visibleStaff.forEach(staff => {
+        const staffRecords = shiftData[staff.id] || {};
+        let weeklyTotalHours = 0;
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-rose-50/20 transition group';
+
+        let cellsHtml = `
+          <td class="p-3.5 whitespace-nowrap">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-3 h-3 rounded-full shrink-0 shadow-xs" style="background-color: ${staff.color}"></span>
+              <div>
+                <span class="font-bold text-slate-900 block leading-tight">${staff.name}</span>
+                <span class="text-[10px] text-slate-400 font-mono block">13:00〜18:00対応</span>
+              </div>
+            </div>
+          </td>
+        `;
+
+        dates.forEach((d, idx) => {
+          const shift = staffRecords[d.dateKey];
+          const isWeekend = (idx === 5 || idx === 6);
+          const bgCol = isWeekend ? (idx === 5 ? 'bg-rose-50/20' : 'bg-red-50/30') : '';
+
+          if (shift && !shift.isOff && shift.hours > 0) {
+            weeklyTotalHours += shift.hours;
+            cellsHtml += `
+              <td class="p-2.5 text-center ${bgCol}">
+                <div class="p-2 rounded-xl border border-rose-200/90 shadow-2xs text-xs font-bold transition hover:scale-[1.02]"
+                     style="background-color: ${staff.bg}; color: ${staff.text}">
+                  <div>${shift.start}〜${shift.end}</div>
+                  <div class="text-[11px] font-semibold opacity-90 mt-0.5">${shift.hours}時間</div>
+                </div>
+              </td>
+            `;
+          } else if (shift && shift.isOff) {
+            cellsHtml += `
+              <td class="p-2.5 text-center ${bgCol}">
+                <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 text-xs font-medium">
+                  休み
+                </div>
+              </td>
+            `;
+          } else {
+            cellsHtml += `
+              <td class="p-2.5 text-center ${bgCol}">
+                <div class="p-2 rounded-xl border border-dashed border-slate-200 text-slate-300 text-xs">
+                  未定
+                </div>
+              </td>
+            `;
+          }
+        });
+
+        cellsHtml += `
+          <td class="p-3.5 text-center font-extrabold text-slate-900 bg-slate-50/60 font-mono text-sm">
+            ${weeklyTotalHours.toFixed(1)}h
+          </td>
+        `;
+
+        tr.innerHTML = cellsHtml;
+        tbody.appendChild(tr);
+      });
+
+      // Render Table Foot (Total daily staffing)
+      const tfoot = document.getElementById('scheduleTableFoot');
+      let footHtml = `
+        <tr class="text-xs font-bold text-slate-600">
+          <td class="p-3.5">出勤人数 / 重複</td>
+      `;
+
+      let totalOrgHours = 0;
+      let multiStaffDays = 0;
+
+      dates.forEach((d, idx) => {
+        let count = 0;
+        staffList.forEach(s => {
+          const shift = (shiftData[s.id] || {})[d.dateKey];
+          if (shift && !shift.isOff && shift.hours > 0) {
+            count++;
+            totalOrgHours += shift.hours;
+          }
+        });
+
+        if (count >= 2) multiStaffDays++;
+
+        const isWeekend = (idx === 5 || idx === 6);
+        const bgCol = isWeekend ? (idx === 5 ? 'bg-rose-50/30' : 'bg-red-50/40') : '';
+
+        footHtml += `
+          <td class="p-3 text-center ${bgCol}">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-extrabold ${count >= 2 ? 'bg-rose-600 text-white' : count === 1 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-400'}">
+              ${count}名 ${count >= 2 ? '★重複' : ''}
+            </span>
+          </td>
+        `;
+      });
+
+      footHtml += `
+        <td class="p-3 text-center font-extrabold text-rose-700 bg-slate-100/80 font-mono">
+          ${totalOrgHours.toFixed(1)}h
+        </td>
+      </tr>
+      `;
+      tfoot.innerHTML = footHtml;
+
+      // Render Timeline View
+      renderTimelineView(dates, visibleStaff);
+
+      // Render KPI Metrics
+      renderKpis(dates, totalOrgHours, multiStaffDays, visibleStaff);
+
+      // Re-init lucide icons
+      lucide.createIcons();
+    }
+
+    function renderTimelineView(dates, visibleStaff) {
+      const container = document.getElementById('timelineList');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Update Legend
+      const legend = document.getElementById('timelineLegend');
+      if (legend) {
+        legend.innerHTML = visibleStaff.map(s => `
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <span class="w-3 h-3 rounded-full" style="background-color: ${s.color}"></span>
+            ${s.name}
+          </span>
+        `).join('');
+      }
+
+      dates.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2';
+
+        const activeStaffInDay = [];
+        visibleStaff.forEach(s => {
+          const shift = (shiftData[s.id] || {})[d.dateKey];
+          if (shift && !shift.isOff && shift.hours > 0) {
+            activeStaffInDay.push({ staff: s, shift });
+          }
+        });
+
+        const overlapText = activeStaffInDay.length >= 2 ? `
+          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white flex items-center gap-1">
+            <i data-lucide="users" class="w-3 h-3"></i> ${activeStaffInDay.length}名重複（手厚い協力体制）
+          </span>
+        ` : '';
+
+        // Calculate dynamic height based on number of active staff (each staff gets their own row)
+        // Base height + 20px (1.25rem) per staff member
+        const trackHeight = activeStaffInDay.length > 0 ? (activeStaffInDay.length * 28) + 8 : 32;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-900">${formatDateJapanese(d.dateKey)}</span>
+              ${overlapText}
+            </div>
+            <span class="text-xs font-semibold text-slate-500">${activeStaffInDay.length}名出勤</span>
+          </div>
+
+          <!-- Hourly visual track (13:00 - 18:00) -->
+          <div class="relative pt-4 pb-2">
+            <!-- Time tick labels -->
+            <div class="flex justify-between text-[10px] font-mono text-slate-400 mb-1 px-1">
+              <span>13:00</span>
+              <span>14:00</span>
+              <span>15:00</span>
+              <span>16:00</span>
+              <span>17:00</span>
+              <span>18:00</span>
+            </div>
+
+            <!-- Track Bar Container (Dynamically sized) -->
+            <div class="relative w-full bg-slate-200/80 rounded-xl overflow-hidden border border-slate-300/60" style="height: ${trackHeight}px;">
+              <!-- Half-hour vertical gridlines -->
+              <div class="absolute inset-0 grid grid-cols-10 pointer-events-none divide-x divide-slate-300/40">
+                <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+              </div>
+
+              <!-- Staff Shift segments (Stacked vertically) -->
+              ${activeStaffInDay.map((item, idx) => {
+                const pos = getBarPosition(item.shift.start, item.shift.end);
+                // Calculate vertical position: 4px from top + (28px spacing * index)
+                const topPos = 4 + (idx * 28);
+                return `
+                  <div class="absolute rounded-md shadow-xs flex items-center justify-start px-2 text-[10px] font-bold text-white transition hover:brightness-110"
+                       style="top: ${topPos}px; height: 20px; left: ${pos.left}%; width: ${pos.width}%; background-color: ${item.staff.color}; opacity: 0.9;">
+                    <span class="truncate drop-shadow-sm">${item.staff.name} (${item.shift.start}〜${item.shift.end})</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function getBarPosition(start, end) {
+      // Scale: 13:00 (0 mins) to 18:00 (300 mins)
+      const parseMinutes = (t) => {
+        const [h, m] = t.split(':').map(Number);
+        return (h * 60 + m) - (13 * 60);
+      };
+
+      const startM = Math.max(0, Math.min(300, parseMinutes(start)));
+      const endM = Math.max(0, Math.min(300, parseMinutes(end)));
+      const duration = Math.max(15, endM - startM);
+
+      return {
+        left: (startM / 300) * 100,
+        width: (duration / 300) * 100
+      };
+    }
+
+    function renderKpis(dates, totalOrgHours, multiStaffDays, visibleStaff) {
+      const container = document.getElementById('kpiContainer');
+      if (!container) return;
+
+      // General Team KPIs
+      let kpiHtml = `
+        <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">チーム総稼働時間</span>
+            <i data-lucide="clock" class="w-4 h-4 text-slate-500"></i>
+          </div>
+          <div class="mt-2 text-2xl font-black text-slate-900 font-mono">${totalOrgHours.toFixed(1)} <span class="text-xs font-normal text-slate-500">時間</span></div>
+          <div class="text-[11px] text-slate-400 mt-0.5">土日を含む週間集計</div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white border border-orange-100 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-500">複数名出勤（重複）</span>
+            <i data-lucide="users" class="w-4 h-4 text-orange-500"></i>
+          </div>
+          <div class="mt-2 text-2xl font-black text-orange-600 font-mono">${multiStaffDays} <span class="text-xs font-normal text-slate-500">日間</span></div>
+          <div class="text-[11px] text-slate-400 mt-0.5">協力・手厚い稼働日</div>
+        </div>
+      `;
+
+      // Dynamic Individual Staff KPIs
+      visibleStaff.forEach(s => {
+        let staffHours = 0;
+        dates.forEach(d => {
+          const shift = (shiftData[s.id] || {})[d.dateKey];
+          if (shift && !shift.isOff && shift.hours > 0) staffHours += shift.hours;
+        });
+
+        kpiHtml += `
+          <div class="p-4 rounded-2xl bg-white border shadow-2xs" style="border-color: ${s.color}40">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-500">${s.name} 週間稼働</span>
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${s.color}"></span>
+            </div>
+            <div class="mt-2 text-2xl font-black font-mono" style="color: ${s.text}">${staffHours.toFixed(1)} <span class="text-xs font-normal text-slate-500">時間</span></div>
+            <div class="text-[11px] text-slate-400 mt-0.5">午後13:00〜18:00枠</div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = kpiHtml;
+    }
+
+    async function handleRefresh() {
+      const icon = document.getElementById('refreshIcon');
+      if (icon) icon.classList.add('animate-spin');
+
+      const activeMonthInfo = getActiveMonthInfo();
+      const currentYear = activeMonthInfo.year;
+      const currentMonth = activeMonthInfo.month;
+
+      let successStaffNames = [];
+      let failStaffNames = [];
+      lastSyncDiagnostics = {};
+
+      // CLEAR PREVIOUS DATA FOR THE CURRENT MONTH BEFORE SYNCING
+      // This ensures deleted shifts in the spreadsheet are removed from the dashboard.
+      for (const staff of staffList) {
+         if(!shiftData[staff.id]) shiftData[staff.id] = {};
+         
+         // Find all dates currently in this staff's data that belong to the active month
+         const datesToRemove = Object.keys(shiftData[staff.id]).filter(dateKey => {
+             const [y, m, d] = dateKey.split('-').map(Number);
+             return y === currentYear && m === currentMonth;
+         });
+         
+         // Remove them so we start fresh for this month's sync
+         datesToRemove.forEach(dateKey => {
+             delete shiftData[staff.id][dateKey];
+         });
+      }
+
+
+      for (const staff of staffList) {
+        const sheetId = extractSpreadsheetId(staff.url);
+        const gid = extractGid(staff.url);
+        if (!sheetId) {
+          lastSyncDiagnostics[staff.id] = {
+            staffName: staff.name,
+            status: 'error',
+            message: 'スプレッドシートURLが無効です'
+          };
+          failStaffNames.push(staff.name);
+          continue;
+        }
+
+        // Try candidate tabs (e.g. "9月", "9", "2026年9月", or default first sheet)
+        const tabCandidates = [];
+        if (gid) {
+          tabCandidates.push(`gid=${gid}`); // Highest priority: Exact tab requested in URL
+        }
+        if (staff.tabRule && staff.tabRule !== 'auto') {
+          tabCandidates.push(staff.tabRule);
+        }
+        tabCandidates.push(`${currentMonth}月`);
+        tabCandidates.push(`${currentMonth}月度`);
+        tabCandidates.push(`${currentMonth}`);
+        tabCandidates.push(`${currentYear}年${currentMonth}月`);
+        tabCandidates.push(null); // default / first tab
+
+        let tableResult = null;
+        let usedTabName = '';
+        let lastError = null;
+
+        for (const candidate of tabCandidates) {
+          try {
+            tableResult = await fetchGoogleSpreadsheetJSONP(sheetId, candidate);
+            if (tableResult && tableResult.rows && tableResult.rows.length > 0) {
+              usedTabName = candidate || 'シート1 (先頭タブ)';
+              break;
+            }
+          } catch (err) {
+            lastError = err;
+          }
+        }
+
+        if (tableResult) {
+          const parsed = parseGvizTable(tableResult, currentYear, currentMonth);
+          const recordCount = Object.keys(parsed.records).length;
+
+          if (recordCount > 0) {
+            if (!shiftData[staff.id]) shiftData[staff.id] = {};
+            Object.assign(shiftData[staff.id], parsed.records);
+
+            successStaffNames.push(staff.name);
+            lastSyncDiagnostics[staff.id] = {
+              staffName: staff.name,
+              status: 'success',
+              tabName: usedTabName,
+              totalRows: parsed.rawRowsCount,
+              parsedCount: recordCount,
+              preview: parsed.preview
+            };
+          } else {
+            failStaffNames.push(staff.name);
+            lastSyncDiagnostics[staff.id] = {
+              staffName: staff.name,
+              status: 'warning',
+              tabName: usedTabName,
+              totalRows: parsed.rawRowsCount,
+              parsedCount: 0,
+              preview: parsed.preview,
+              message: 'シートは読み込めましたが、日付列が認識できませんでした'
+            };
+          }
+        } else {
+          failStaffNames.push(staff.name);
+          lastSyncDiagnostics[staff.id] = {
+            staffName: staff.name,
+            status: 'error',
+            message: lastError ? lastError.message : 'シートの取得に失敗しました'
+          };
+        }
+      }
+
+      // Re-render UI
+      renderSchedule();
+      updateStaffUIElements();
+      renderDiagnosticsUI();
+
+      if (icon) icon.classList.remove('animate-spin');
+
+      const now = new Date();
+      const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+      const label = document.getElementById('lastUpdatedLabel');
+      if (label) {
+        label.textContent = `${timeStr} 同期完了 (${currentMonth}月対応)`;
+      }
+
+      const summary = document.getElementById('syncStatusSummary');
+      if (summary) {
+        if (successStaffNames.length > 0) {
+          summary.innerHTML = `<span class="text-emerald-700 font-bold">✓ ${successStaffNames.join('・')}</span> のGoogleスプレッドシートから最新シフトを直接ロードしました。`;
+        } else {
+          summary.innerHTML = `<span class="text-rose-700 font-bold">✕ 同期エラー:</span> シートのアクセス権限またはタブ形式をご確認ください。「同期データ診断」で詳細を確認できます。`;
+        }
+      }
+
+      if (successStaffNames.length > 0) {
+        showToast(`${successStaffNames.join('・')} の最新シフトを反映しました！`);
+      } else {
+        showToast('同期に失敗しました。「同期データ診断」をご確認ください');
+      }
+    }
+
+    function renderDiagnosticsUI() {
+      const container = document.getElementById('debugContent');
+      if (!container) return;
+      container.innerHTML = '';
+
+      staffList.forEach(staff => {
+        const diag = lastSyncDiagnostics[staff.id];
+        const card = document.createElement('div');
+        card.className = 'p-4 rounded-2xl border bg-slate-50/70 border-slate-200 text-xs space-y-3';
+
+        if (!diag) {
+          card.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">${staff.name}</span>
+              <span class="text-slate-400">未診断（「再取得を実行」を押してください）</span>
+            </div>
+          `;
+          container.appendChild(card);
+          return;
+        }
+
+        const isSuccess = diag.status === 'success';
+        card.innerHTML = `
+          <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" style="background-color: ${staff.color}"></span>
+              <span class="font-bold text-slate-900 text-sm">${staff.name}</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${isSuccess ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${isSuccess ? '取得成功' : 'エラー / 要確認'}
+              </span>
+            </div>
+            <span class="font-mono text-slate-500 text-[11px]">${diag.tabName ? `対象タブ: ${diag.tabName}` : ''}</span>
+          </div>
+
+          ${diag.message ? `<p class="text-rose-600 font-semibold">${diag.message}</p>` : ''}
+
+          <div class="grid grid-cols-2 gap-2 text-slate-600">
+            <div class="p-2 bg-white rounded-lg border border-slate-200">
+              <div class="text-[10px] text-slate-400">読み取った全行数</div>
+              <div class="font-bold text-slate-800 text-sm">${diag.totalRows || 0} 行</div>
+            </div>
+            <div class="p-2 bg-white rounded-lg border border-slate-200">
+              <div class="text-[10px] text-slate-400">有効なシフトとして認識</div>
+              <div class="font-bold text-rose-600 text-sm">${diag.parsedCount || 0} 日分</div>
+            </div>
+          </div>
+
+          ${diag.preview && diag.preview.length > 0 ? `
+            <div class="mt-2">
+              <div class="font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span>認識できた直近のシフトデータ（先頭${diag.preview.length}件）:</span>
+                <span class="text-[10px] text-slate-400">形式が合っているか確認してください</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-[11px] bg-white border border-slate-200 rounded-lg overflow-hidden">
+                  <thead class="bg-slate-100/70 text-slate-500 text-left">
+                    <tr>
+                      <th class="p-1.5 border-b">元のセル値</th>
+                      <th class="p-1.5 border-b">認識日付</th>
+                      <th class="p-1.5 border-b">時間</th>
+                      <th class="p-1.5 border-b">時間数</th>
+                      <th class="p-1.5 border-b">備考</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 font-mono">
+                    ${diag.preview.map(p => `
+                      <tr>
+                        <td class="p-1.5 text-slate-400 truncate max-w-[120px]">${p.rawDate}</td>
+                        <td class="p-1.5 font-bold text-slate-800">${p.dateKey}</td>
+                        <td class="p-1.5">${p.start} - ${p.end}</td>
+                        <td class="p-1.5 text-rose-600 font-bold">${p.status}</td>
+                        <td class="p-1.5 text-slate-500 truncate max-w-[100px]">${p.note || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateStaffUIElements() {
+      // Render badges in status header
+      const badgesContainer = document.getElementById('memberBadgesContainer');
+      if (badgesContainer) {
+        badgesContainer.innerHTML = staffList.map(s => `
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs"
+               style="background-color: ${s.bg}; border-color: ${s.color}40; color: ${s.text}">
+            <span class="w-2 h-2 rounded-full" style="background-color: ${s.color}"></span>
+            <span>${s.name}</span>
+            ${s.url ? `
+              <a href="${s.url}" target="_blank" class="hover:opacity-75 transition ml-1" title="スプレッドシートを開く">
+                <i data-lucide="external-link" class="w-3.5 h-3.5 inline"></i>
+              </a>
+            ` : ''}
+          </div>
+        `).join('');
+      }
+
+      // Update Filter Dropdown
+      const filterSelect = document.getElementById('memberFilter');
+      if (filterSelect) {
+        const current = filterSelect.value;
+        filterSelect.innerHTML = '<option value="all">全員を表示</option>' + staffList.map(s => `
+          <option value="${s.id}">${s.name}</option>
+        `).join('');
+        filterSelect.value = current;
+      }
+
+      // Render Sync Config inputs
+      const syncInputs = document.getElementById('sheetUrlInputsContainer');
+      if (syncInputs) {
+        syncInputs.innerHTML = staffList.map(s => `
+          <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${s.color}"></span>
+                ${s.name}
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono">ID: ${s.id}</span>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-0.5">スプレッドシート共有URL</label>
+              <input type="text" id="sync_url_${s.id}" value="${s.url || ''}" placeholder="https://docs.google.com/spreadsheets/d/..."
+                     class="w-full text-xs px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono text-slate-700">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-500 mb-0.5">参照タブ名（通常は「auto」で自動判定）</label>
+              <input type="text" id="sync_tab_${s.id}" value="${s.tabRule || 'auto'}" placeholder="auto, 9月, 10月 など"
+                     class="w-full text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-700">
+            </div>
+          </div>
+        `).join('');
+      }
+
+      lucide.createIcons();
+    }
+
+    function openModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    }
+
+    function openShareModal() {
+      const urlInput = document.getElementById('shareUrlInput');
+      if (urlInput) {
+        urlInput.value = window.location.href;
+      }
+      openModal('shareModal');
+    }
+
+    function copyShareUrl() {
+      const urlInput = document.getElementById('shareUrlInput');
+      if (urlInput) {
+        urlInput.select();
+        document.execCommand('copy');
+        showToast('URLをクリップボードにコピーしました！');
+      }
+    }
+
+    function printShiftReport() {
+      closeModal('shareModal');
+      window.print();
+    }
+
+    function addNewStaffMember() {
+      const nameInput = document.getElementById('newMemberName');
+      const urlInput = document.getElementById('newMemberUrl');
+      const colorInput = document.getElementById('newMemberColor');
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        showToast('スタッフ名を入力してください');
+        return;
+      }
+
+      const id = 'staff_' + Date.now();
+      const color = colorInput.value || '#e11d48';
+
+      staffList.push({
+        id: id,
+        name: name,
+        color: color,
+        bg: '#fff1f2',
+        text: '#9f1239',
+        url: urlInput.value.trim(),
+        tabRule: 'auto'
+      });
+
+      shiftData[id] = {};
+      saveStaffListToStorage();
+      updateStaffUIElements();
+      renderSchedule();
+
+      nameInput.value = '';
+      urlInput.value = '';
+      closeModal('addMemberModal');
+      showToast(`${name} をスタッフに追加しました！`);
+    }
+
+    function saveSyncSettingsAndRun() {
+      staffList.forEach(s => {
+        const urlEl = document.getElementById(`sync_url_${s.id}`);
+        const tabEl = document.getElementById(`sync_tab_${s.id}`);
+        if (urlEl) s.url = urlEl.value.trim();
+        if (tabEl) s.tabRule = tabEl.value.trim() || 'auto';
+      });
+
+      saveStaffListToStorage();
+      closeModal('syncConfigModal');
+      handleRefresh();
+    }
+
+    function clearSyncSettings() {
+      localStorage.removeItem('shift_sync_staff');
+      location.reload();
+    }
+
+    function saveStaffListToStorage() {
+      try {
+        localStorage.setItem('shift_sync_staff', JSON.stringify(staffList));
+      } catch (e) {}
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      if (!toast || !toastMsg) return;
+
+      toastMsg.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-[-10px]');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+      }, 3500);
+    }
+
+    // Window Startup Initialization
+    window.onload = function() {
+      lucide.createIcons();
+
+      try {
+        const saved = localStorage.getItem('shift_sync_staff');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            staffList = parsed.map(s => {
+              if (s.id === 'machida') {
+                s.color = '#2563eb'; // Blue override
+                s.bg = '#eff6ff';
+                s.text = '#1e3a8a';
+                // URLに更新がある場合は上書き
+                if (!s.url || s.url.includes('1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc')) {
+                  s.url = 'https://docs.google.com/spreadsheets/d/1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc/edit?gid=354556482#gid=354556482';
+                }
+              }
+              if (s.id === 'yamanaka') {
+                s.color = '#ea580c'; // Orange override
+                s.bg = '#fff7ed';
+                s.text = '#9a3412';
+                // URLに更新がある場合は上書き
+                if (!s.url || s.url.includes('1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM')) {
+                  s.url = 'https://docs.google.com/spreadsheets/d/1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM/edit?gid=712987012#gid=712987012';
+                }
+              }
+              return s;
+            });
+          }
+        }
+      } catch (e) {}
+
+      updateStaffUIElements();
+      updateWeekRangeLabel();
+      syncMonthSelectWithCurrentWeek();
+      renderSchedule();
+
+      // Automatically trigger live spreadsheet sync on startup
+      setTimeout(() => {
+        handleRefresh();
+      }, 300);
+    };
+  </script>
+</body>
+</html>
