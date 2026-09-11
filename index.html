@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>統合シフトダッシュボード</title>
+  <title>㈱Inbalink シフト一覧</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f8fafc; }
     .glass-card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); border: 1px solid #f1f5f9; }
     .timeline-bg { background-image: repeating-linear-gradient(to right, transparent, transparent 49px, #e2e8f0 49px, #e2e8f0 50px); background-size: 50px 100%; }
-    .staff-timeline-row { position: relative; height: 32px; margin-bottom: 8px; }
   </style>
 </head>
 <body class="p-4 md:p-8 text-slate-800">
@@ -23,15 +22,18 @@
       </div>
       <div>
         <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          シフト統合ダッシュボード
+          ㈱Inbalink シフト一覧
           <span class="text-xs font-medium bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">リアルタイム自動連携</span>
         </h1>
-        <p class="text-sm text-slate-500">Googleスプレッドシート直結管理（13:00〜18:00・30分単位）</p>
+        <p class="text-sm text-slate-500">Googleスプレッドシート直結管理</p>
       </div>
     </div>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <button onclick="handleRefresh()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg font-bold shadow-md flex items-center gap-2 transition-all">
         <i data-lucide="refresh-cw" class="w-4 h-4"></i> 最新データに更新
+      </button>
+      <button onclick="openStaffModal()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-all">
+        <i data-lucide="user-plus" class="w-4 h-4 text-rose-600"></i> ワーカー追加・管理
       </button>
       <button onclick="openDiagnosticModal()" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-all">
         <i data-lucide="search" class="w-4 h-4"></i> 同期データ診断
@@ -45,50 +47,74 @@
   <!-- メインコンテンツ -->
   <main class="max-w-6xl mx-auto space-y-6">
     
-    <!-- KPIカード領域（スタッフ数に応じて自動生成） -->
+    <!-- KPIカード領域 -->
     <div id="kpiCardsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <!-- チーム合計カードは固定 -->
       <div class="glass-card p-5 border-l-4 border-l-slate-800">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-bold text-slate-500">チーム総稼働時間</h3>
+          <h3 class="text-sm font-bold text-slate-500" id="kpiScopeTitle">チーム総稼働時間</h3>
           <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
         </div>
         <div class="flex items-baseline gap-1">
           <span id="totalTeamHours" class="text-3xl font-extrabold text-slate-800">0.0</span>
           <span class="text-sm font-bold text-slate-500">時間</span>
         </div>
-        <p class="text-xs text-slate-400 mt-1">表示中の週の合計</p>
+        <p class="text-xs text-slate-400 mt-1" id="kpiScopeSubtitle">表示中の週の合計</p>
       </div>
       
       <div class="glass-card p-5 border-l-4 border-l-rose-500">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-bold text-slate-500">複数名出勤（重複）</h3>
+          <h3 class="text-sm font-bold text-slate-500">複数名出勤</h3>
           <i data-lucide="users" class="w-4 h-4 text-rose-400"></i>
         </div>
         <div class="flex items-baseline gap-1">
           <span id="overlapDays" class="text-3xl font-extrabold text-rose-600">0</span>
           <span class="text-sm font-bold text-slate-500">日間</span>
         </div>
-        <p class="text-xs text-slate-400 mt-1">協力・手厚い稼働日</p>
+        <p class="text-xs text-slate-400 mt-1">手厚い稼働日</p>
       </div>
       
-      <!-- スタッフ個別のカードがここに動的に追加される -->
       <div id="staffKpiInjectionPoint" class="contents"></div>
     </div>
 
     <!-- カレンダー・タイムライン切替領域 -->
     <div class="glass-card p-6">
-      <div class="flex justify-between items-center mb-6">
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2">
-            <button onclick="changeWeek(-1)" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-            <span id="weekRangeLabel" class="font-bold text-slate-700 bg-slate-100 px-4 py-1.5 rounded-lg border border-slate-200">2026年9月14日 〜 9月20日</span>
-            <button onclick="changeWeek(1)" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+      <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+        
+        <!-- ナビゲーションバー -->
+        <div class="inline-flex items-center gap-3 p-1.5 px-3 bg-slate-50/80 border border-slate-200/80 rounded-2xl shadow-sm">
+          <div class="relative">
+            <select id="monthSelect" onchange="handleMonthChange(this.value)" class="appearance-none bg-white border border-rose-400 text-rose-700 font-bold text-sm rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-200 cursor-pointer shadow-sm">
+              <option value="2026-08">2026年8月</option>
+              <option value="2026-09" selected>2026年9月</option>
+              <option value="2026-10">2026年10月</option>
+              <option value="2026-11">2026年11月</option>
+              <option value="2026-12">2026年12月</option>
+            </select>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-rose-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+          </div>
+
+          <div id="weekNavControls" class="flex items-center gap-1.5 text-slate-600 font-bold text-sm">
+            <button onclick="changeWeek(-1)" title="前週" class="p-1 hover:text-rose-600 hover:bg-slate-200/60 rounded-md transition-colors">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button onclick="goToCurrentWeek()" class="px-2 py-0.5 hover:text-rose-600 hover:bg-slate-200/60 rounded-md transition-colors text-xs font-bold text-slate-700">
+              今週
+            </button>
+            <button onclick="changeWeek(1)" title="翌週" class="p-1 hover:text-rose-600 hover:bg-slate-200/60 rounded-md transition-colors">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="bg-rose-50/40 border border-rose-100/90 text-slate-800 font-bold text-xs px-3 py-1.5 rounded-xl shadow-inner">
+            <span id="weekRangeLabel">2026年9月14日 〜 9月20日</span>
           </div>
         </div>
+
+        <!-- 表示切り替えボタングループ（月間カレンダーを追加） -->
         <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-          <button id="btnViewTable" onclick="switchView('table')" class="px-4 py-1.5 text-sm font-bold rounded-md bg-white shadow-sm text-slate-800">週間一覧</button>
-          <button id="btnViewTimeline" onclick="switchView('timeline')" class="px-4 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700">タイムライン (13-18時)</button>
+          <button id="btnViewTable" onclick="switchView('table')" class="px-3 py-1.5 text-sm font-bold rounded-md bg-white shadow-sm text-slate-800 transition-all">週間一覧</button>
+          <button id="btnViewTimeline" onclick="switchView('timeline')" class="px-3 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">タイムライン (13-18時)</button>
+          <button id="btnViewMonth" onclick="switchView('month')" class="px-3 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">月間カレンダー</button>
         </div>
       </div>
 
@@ -98,16 +124,12 @@
           <thead>
             <tr id="tableHeaderRow" class="border-y border-slate-200 bg-slate-50/50">
               <th class="p-3.5 text-left text-sm font-bold text-slate-500 w-48">スタッフ名</th>
-              <!-- 日付ヘッダーがJSで挿入される -->
             </tr>
           </thead>
-          <tbody id="scheduleTableBody" class="divide-y divide-slate-100">
-            <!-- シフトデータがJSで挿入される -->
-          </tbody>
+          <tbody id="scheduleTableBody" class="divide-y divide-slate-100"></tbody>
           <tfoot>
             <tr id="tableFooterRow" class="border-t border-slate-200 bg-slate-50/50 font-bold text-sm">
               <td class="p-3.5 text-slate-500">出勤人数</td>
-              <!-- 合計がJSで挿入される -->
             </tr>
           </tfoot>
         </table>
@@ -115,12 +137,73 @@
 
       <!-- タイムラインビュー -->
       <div id="viewTimeline" class="hidden">
-        <div id="timelineContainer" class="space-y-6">
-          <!-- タイムラインがJSで挿入される -->
+        <div id="timelineContainer" class="space-y-6"></div>
+      </div>
+
+      <!-- 月間カレンダービュー -->
+      <div id="viewMonth" class="hidden">
+        <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center text-xs font-bold py-2 mb-2 rounded-t-lg">
+          <div class="text-slate-600">月</div>
+          <div class="text-slate-600">火</div>
+          <div class="text-slate-600">水</div>
+          <div class="text-slate-600">木</div>
+          <div class="text-slate-600">金</div>
+          <div class="text-blue-600">土</div>
+          <div class="text-rose-600">日</div>
         </div>
+        <div id="monthCalendarGrid" class="grid grid-cols-7 gap-2"></div>
       </div>
     </div>
   </main>
+
+  <!-- スタッフ追加・管理モーダル -->
+  <div id="staffModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-5 h-5 text-rose-600"></i> スタッフ追加・管理
+        </h2>
+        <button onclick="closeStaffModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+      </div>
+      
+      <div class="p-6 overflow-y-auto flex-1 space-y-6">
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+          <h3 class="text-sm font-bold text-slate-700">新規スタッフ登録</h3>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">スタッフ表示名</label>
+            <input type="text" id="newStaffName" placeholder="例: 田中さん" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">識別カラー</label>
+            <select id="newStaffColor" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white">
+              <option value="blue">ブルー（青）</option>
+              <option value="rose">ローズ（赤）</option>
+              <option value="emerald">エメラルド（緑）</option>
+              <option value="amber">アンバー（橙）</option>
+              <option value="purple">パープル（紫）</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">スプレッドシートURL（シフト一覧タブ）</label>
+            <input type="text" id="newStaffUrl" placeholder="https://docs.google.com/spreadsheets/d/.../edit?gid=..." class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white">
+          </div>
+          <button onclick="handleAddStaff()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-sm transition-colors">
+            スタッフを追加する
+          </button>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-bold text-slate-700 mb-3">登録中スタッフ一覧</h3>
+          <div id="staffListContainer" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between">
+        <button onclick="resetDefaultStaff()" class="text-xs text-slate-400 hover:text-slate-600 underline">初期設定（2名）に戻す</button>
+        <button onclick="closeStaffModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 同期データ診断モーダル -->
   <div id="diagnosticModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
@@ -131,25 +214,21 @@
         </h2>
         <button onclick="closeDiagnosticModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
       </div>
-      <div id="diagnosticContent" class="p-6 overflow-y-auto flex-1 space-y-6">
-        <!-- 診断結果がここに挿入される -->
-        <div class="text-center text-slate-500 py-8">「最新データに更新」ボタンを押すと診断結果が表示されます</div>
-      </div>
+      <div id="diagnosticContent" class="p-6 overflow-y-auto flex-1 space-y-6"></div>
     </div>
   </div>
 
   <script>
-    // ▼ 設定管理 ▼
-    const CONFIG_VERSION = "4.0"; // キャッシュ破棄用
+    const STORAGE_KEY = "inbalink_staff_list_v1";
     const defaultStaff = [
       { id: 'machida', name: '町田さん', color: 'blue', url: 'https://docs.google.com/spreadsheets/d/1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc/edit?gid=354556482#gid=354556482' },
       { id: 'yamanaka', name: '山中さん', color: 'rose', url: 'https://docs.google.com/spreadsheets/d/1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM/edit?gid=712987012#gid=712987012' }
     ];
 
-    let staffConfig = JSON.parse(localStorage.getItem('shiftStaffConfig_v' + CONFIG_VERSION));
-    if (!staffConfig) {
-      staffConfig = defaultStaff;
-      localStorage.setItem('shiftStaffConfig_v' + CONFIG_VERSION, JSON.stringify(staffConfig));
+    let staffConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultStaff;
+
+    function saveStaffConfig() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(staffConfig));
     }
 
     const colorMap = {
@@ -160,7 +239,6 @@
       purple: { bg: 'bg-purple-500', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-200' }
     };
 
-    // ▼ 日本の祝日データ (2026-2027) ▼
     const HOLIDAYS_JP = [
       '2026-01-01', '2026-01-12', '2026-02-11', '2026-02-23', '2026-03-20', '2026-04-29', '2026-05-03', '2026-05-04', '2026-05-05', '2026-05-06',
       '2026-07-20', '2026-08-11', '2026-09-21', '2026-09-22', '2026-09-23', '2026-10-12', '2026-11-03', '2026-11-23',
@@ -171,27 +249,23 @@
       return HOLIDAYS_JP.includes(dateKey);
     }
 
-    // 曜日の色分け共通ロジック
     function getDayColorClass(dateKey, dayIdx) {
       if (isHoliday(dateKey) || dayIdx === 6) return { text: 'text-rose-600', bg: 'bg-rose-50/40' };
       if (dayIdx === 5) return { text: 'text-blue-600', bg: 'bg-blue-50/30' };
       return { text: 'text-slate-500', bg: '' };
     }
 
-    // ▼ データストア ▼
     let shiftData = {}; 
-    let currentBaseDate = new Date(2026, 8, 14); // 2026/09/14を初期表示
+    let currentBaseDate = new Date(2026, 8, 14); // 2026-09-14基準
     let currentView = 'table';
     let diagnosticLogs = {};
 
-    // 画面初期化
     function init() {
       lucide.createIcons();
       updateKpiCardsUI();
-      handleRefresh(); // 初期ロード
+      handleRefresh();
     }
 
-    // JSONPコールバック用グローバル関数
     window.gvizCallback = {};
 
     async function handleRefresh() {
@@ -201,7 +275,6 @@
       btn.disabled = true;
       lucide.createIcons();
 
-      // 現在のデータをクリア
       shiftData = {};
       diagnosticLogs = {};
 
@@ -215,12 +288,11 @@
       lucide.createIcons();
     }
 
-    // スプレッドシート読み込み（高度なテーブルスキャン対応）
     function fetchSpreadsheetData(staff) {
       return new Promise((resolve) => {
         const urlMatch = staff.url.match(/\/d\/([a-zA-Z0-9-_]+)/);
         if (!urlMatch) {
-          logDiagnostic(staff.id, "エラー", 0, "無効なURL形式です。");
+          logDiagnostic(staff.id, "エラー", 0, "URL形式が無効です。");
           resolve(); return;
         }
         const sheetId = urlMatch[1];
@@ -232,152 +304,125 @@
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json;responseHandler:gvizCallback.cb_${staff.id}${gidPart}`;
 
         window.gvizCallback[`cb_${staff.id}`] = function(json) {
-          parseGvizData(json, staff);
+          parseGvizDataFlexible(json, staff);
           resolve();
         };
 
         const script = document.createElement('script');
         script.src = gvizUrl;
         script.onerror = () => {
-          logDiagnostic(staff.id, "エラー", 0, "通信に失敗しました。共有設定を確認してください。");
+          logDiagnostic(staff.id, "通信エラー", 0, "スプレッドシートへのアクセスに失敗しました。共有設定を確認してください。");
           resolve();
         };
         document.body.appendChild(script);
       });
     }
 
-    function parseGvizData(json, staff) {
+    function parseGvizDataFlexible(json, staff) {
       if (!json || !json.table || !json.table.rows) {
-        logDiagnostic(staff.id, "エラー", 0, "データが空です。");
+        logDiagnostic(staff.id, "エラー", 0, "スプレッドシートからデータが返されませんでした。");
         return;
       }
       
       const rows = json.table.rows;
-      const cols = json.table.cols;
       let parsedCount = 0;
       let logs = [];
-
-      // 1. カラム（列）の役割を自動特定する
-      let dateCol = -1, startCol = -1, endCol = -1;
-      let dataStartRow = 0;
-
-      // ヘッダー行を探索（日付、開始時刻、終了時刻が含まれる行を探す）
-      for (let r = 0; r < Math.min(10, rows.length); r++) {
-        const row = rows[r];
-        if (!row || !row.c) continue;
-        
-        let foundD = -1, foundS = -1, foundE = -1;
-        row.c.forEach((cell, i) => {
-          if (!cell) return;
-          const val = String(cell.v || cell.f || '');
-          if (val.includes('日付')) foundD = i;
-          if (val.includes('開始')) foundS = i;
-          if (val.includes('終了')) foundE = i;
-        });
-
-        if (foundD !== -1 && foundS !== -1) {
-          dateCol = foundD;
-          startCol = foundS;
-          endCol = foundE !== -1 ? foundE : foundS + 1; // 終了が見つからなければ開始の隣と推測
-          dataStartRow = r + 1; // 次の行からデータ
-          break;
-        }
-      }
-
-      // もしrowsの中で見つからなければ、colsのラベルを調べる（Gvizの仕様考慮）
-      if (dateCol === -1) {
-        cols.forEach((col, i) => {
-          const val = String(col.label || '');
-          if (val.includes('日付')) dateCol = i;
-          if (val.includes('開始')) startCol = i;
-          if (val.includes('終了')) endCol = i;
-        });
-        if (dateCol !== -1 && startCol !== -1) {
-          if (endCol === -1) endCol = startCol + 1;
-          dataStartRow = 0; // すべてデータ行
-        }
-      }
-
-      // どうしても見つからなければフォールバック
-      if (dateCol === -1 || startCol === -1) {
-        logDiagnostic(staff.id, "解析失敗", rows.length, "「日付」「開始時刻」の列が見つかりません。");
-        return;
-      }
-
       if (!shiftData[staff.id]) shiftData[staff.id] = {};
 
-      // 2. データ抽出ループ
-      for (let i = dataStartRow; i < rows.length; i++) {
-        const row = rows[i];
+      for (let r = 0; r < rows.length; r++) {
+        const row = rows[r];
         if (!row || !row.c) continue;
 
-        const dateCell = row.c[dateCol];
-        const startCell = row.c[startCol];
-        const endCell = endCol !== -1 ? row.c[endCol] : null;
+        let rowDateKey = null;
+        let timeValues = [];
 
-        if (!dateCell || !startCell) continue;
+        for (let c = 0; c < row.c.length; c++) {
+          const cell = row.c[c];
+          if (!cell) continue;
 
-        // 日付の正規化 (Date(2026, 8, 14) -> 2026-09-14)
-        let rawDate = dateCell.f || dateCell.v;
-        let dateKey = normalizeDate(rawDate);
-        if (!dateKey) continue;
+          if (!rowDateKey) {
+            const rawVal = cell.f || cell.v;
+            const parsedDate = normalizeDate(rawVal);
+            if (parsedDate) {
+              rowDateKey = parsedDate;
+              continue;
+            }
+          }
 
-        // 時間の正規化 ([14,0,0,0] -> "14:00")
-        let rawStart = startCell.f || startCell.v;
-        let rawEnd = endCell ? (endCell.f || endCell.v) : null;
-        
-        let startStr = normalizeTime(rawStart);
-        let endStr = normalizeTime(rawEnd);
-
-        // 終了時刻がない場合、18:00か+3時間などを推測（今回は画像に終了時刻があるのでそのまま処理）
-        if (startStr && !endStr) endStr = "18:00"; // 仮
-
-        let status = "休み";
-        let hrs = 0;
-
-        if (startStr && endStr) {
-          const sDec = timeToDecimal(startStr);
-          const eDec = timeToDecimal(endStr);
-          if (eDec > sDec) {
-            status = `${startStr}〜${endStr}`;
-            hrs = eDec - sDec;
-            shiftData[staff.id][dateKey] = { start: startStr, end: endStr, hours: hrs, raw: status };
-            parsedCount++;
+          const rawTime = cell.f || cell.v;
+          const parsedTime = normalizeTime(rawTime);
+          if (parsedTime) {
+            timeValues.push(parsedTime);
           }
         }
 
-        if (logs.length < 5) {
-          logs.push({ raw: dateKey, parsedDate: dateKey, time: `${startStr||'-'} - ${endStr||'-'}`, status: status === '休み' ? '無効' : 'OK', hours: hrs });
+        if (rowDateKey && timeValues.length >= 1) {
+          const startStr = timeValues[0];
+          let endStr = timeValues.length >= 2 ? timeValues[1] : "18:00";
+
+          const sDec = timeToDecimal(startStr);
+          const eDec = timeToDecimal(endStr);
+
+          if (eDec > sDec) {
+            const hrs = eDec - sDec;
+            shiftData[staff.id][rowDateKey] = {
+              start: startStr,
+              end: endStr,
+              hours: hrs,
+              raw: `${startStr}〜${endStr}`
+            };
+            parsedCount++;
+
+            if (logs.length < 5) {
+              logs.push({
+                parsedDate: rowDateKey,
+                time: `${startStr} - ${endStr}`,
+                status: '正常',
+                hours: hrs
+              });
+            }
+          }
         }
       }
 
-      logDiagnostic(staff.id, "成功", rows.length, `${parsedCount}件のシフトを抽出しました。`, logs);
+      if (parsedCount > 0) {
+        logDiagnostic(staff.id, "成功", rows.length, `${parsedCount}件のシフトを正常に抽出しました。`, logs);
+      } else {
+        logDiagnostic(staff.id, "解析失敗", rows.length, `全${rows.length}行を走査しましたが、有効な日付と時刻が見つかりませんでした。`, logs);
+      }
     }
 
     function normalizeDate(val) {
       if (!val) return null;
       let s = String(val);
-      // Date(2026, 8, 14)形式の処理 (月は0始まり)
       const dMatch = s.match(/Date\((\d+),\s*(\d+),\s*(\d+)/);
       if (dMatch) {
         let m = String(parseInt(dMatch[2]) + 1).padStart(2, '0');
         let d = String(dMatch[3]).padStart(2, '0');
         return `${dMatch[1]}-${m}-${d}`;
       }
-      // YYYY-MM-DD形式
-      if (s.match(/^\d{4}-\d{2}-\d{2}$/)) return s;
+      const isoMatch = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if (isoMatch) {
+        let m = String(isoMatch[2]).padStart(2, '0');
+        let d = String(isoMatch[3]).padStart(2, '0');
+        return `${isoMatch[1]}-${m}-${d}`;
+      }
       return null;
     }
 
     function normalizeTime(val) {
       if (!val) return null;
-      // [14, 0, 0, 0] のようなGviz配列時間
       if (Array.isArray(val) && val.length >= 2) {
         return `${String(val[0]).padStart(2, '0')}:${String(val[1]).padStart(2, '0')}`;
       }
       let s = String(val);
-      let tMatch = s.match(/(\d{1,2})[:：](\d{2})/);
-      if (tMatch) return `${String(tMatch[1]).padStart(2, '0')}:${tMatch[2]}`;
+      let tMatch = s.match(/^(\d{1,2})[:：](\d{2})$/);
+      if (tMatch) {
+        let h = parseInt(tMatch[1]);
+        if (h >= 8 && h <= 22) {
+          return `${String(h).padStart(2, '0')}:${tMatch[2]}`;
+        }
+      }
       return null;
     }
 
@@ -390,12 +435,11 @@
       diagnosticLogs[staffId] = { status, totalRows, message, logs };
     }
 
-    // ▼ 描画ロジック ▼
     function getWeekDates(baseDate) {
       const dates = [];
       const current = new Date(baseDate);
       const day = current.getDay();
-      const diff = current.getDate() - day + (day === 0 ? -6 : 1); // 月曜始まり
+      const diff = current.getDate() - day + (day === 0 ? -6 : 1);
       current.setDate(diff);
 
       for (let i = 0; i < 7; i++) {
@@ -404,6 +448,7 @@
         const d = String(current.getDate()).padStart(2, '0');
         dates.push({
           dateKey: `${y}-${m}-${d}`,
+          year: y,
           month: current.getMonth() + 1,
           date: current.getDate(),
           dayIdx: i
@@ -415,15 +460,53 @@
 
     function changeWeek(offset) {
       currentBaseDate.setDate(currentBaseDate.getDate() + (offset * 7));
+      syncMonthSelectWithDate();
       renderDashboard();
+    }
+
+    function goToCurrentWeek() {
+      currentBaseDate = new Date(2026, 8, 14);
+      syncMonthSelectWithDate();
+      renderDashboard();
+    }
+
+    function handleMonthChange(val) {
+      const parts = val.split('-');
+      currentBaseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 14);
+      renderDashboard();
+    }
+
+    function syncMonthSelectWithDate() {
+      const y = currentBaseDate.getFullYear();
+      const m = String(currentBaseDate.getMonth() + 1).padStart(2, '0');
+      const val = `${y}-${m}`;
+      const sel = document.getElementById('monthSelect');
+      if (sel) {
+        for (let opt of sel.options) {
+          if (opt.value === val) {
+            sel.value = val;
+            break;
+          }
+        }
+      }
     }
 
     function switchView(view) {
       currentView = view;
       document.getElementById('viewTable').classList.toggle('hidden', view !== 'table');
       document.getElementById('viewTimeline').classList.toggle('hidden', view !== 'timeline');
-      document.getElementById('btnViewTable').className = view === 'table' ? 'px-4 py-1.5 text-sm font-bold rounded-md bg-white shadow-sm text-slate-800' : 'px-4 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700';
-      document.getElementById('btnViewTimeline').className = view === 'timeline' ? 'px-4 py-1.5 text-sm font-bold rounded-md bg-white shadow-sm text-slate-800' : 'px-4 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700';
+      document.getElementById('viewMonth').classList.toggle('hidden', view !== 'month');
+
+      document.getElementById('weekNavControls').classList.toggle('hidden', view === 'month');
+
+      const btnBase = "px-3 py-1.5 text-sm font-bold rounded-md transition-all";
+      const btnActive = "bg-white shadow-sm text-slate-800";
+      const btnInactive = "text-slate-500 hover:text-slate-700";
+
+      document.getElementById('btnViewTable').className = `${btnBase} ${view === 'table' ? btnActive : btnInactive}`;
+      document.getElementById('btnViewTimeline').className = `${btnBase} ${view === 'timeline' ? btnActive : btnInactive}`;
+      document.getElementById('btnViewMonth').className = `${btnBase} ${view === 'month' ? btnActive : btnInactive}`;
+
       renderDashboard();
     }
 
@@ -431,7 +514,7 @@
       const container = document.getElementById('staffKpiInjectionPoint');
       let html = '';
       staffConfig.forEach(staff => {
-        const color = colorMap[staff.color];
+        const color = colorMap[staff.color] || colorMap.blue;
         html += `
           <div class="glass-card p-5 border-t-4 border-t-${staff.color}-500 flex flex-col justify-between">
             <div class="flex justify-between items-start mb-2">
@@ -449,12 +532,21 @@
     }
 
     function renderDashboard() {
+      if (currentView === 'month') {
+        renderMonthCalendar();
+      } else {
+        renderWeekDashboard();
+      }
+      lucide.createIcons();
+    }
+
+    function renderWeekDashboard() {
       const dates = getWeekDates(currentBaseDate);
       const dayHeaders = ['月', '火', '水', '木', '金', '土', '日'];
       
-      document.getElementById('weekRangeLabel').textContent = `${dates[0].month}月${dates[0].date}日 〜 ${dates[6].month}月${dates[6].date}日`;
+      document.getElementById('weekRangeLabel').textContent = `${dates[0].year}年${dates[0].month}月${dates[0].date}日 〜 ${dates[6].month}月${dates[6].date}日`;
+      document.getElementById('kpiScopeSubtitle').textContent = "表示中の週の合計";
 
-      // ヘッダー生成 (祝日対応)
       let thHtml = `<th class="p-3.5 text-left text-sm font-bold text-slate-500 w-48 border-r border-slate-200">スタッフ名</th>`;
       dates.forEach((d, idx) => {
         const colClass = getDayColorClass(d.dateKey, idx);
@@ -468,13 +560,11 @@
       thHtml += `<th class="p-3.5 text-center text-sm font-bold text-slate-500 w-24">週合計</th>`;
       document.getElementById('tableHeaderRow').innerHTML = thHtml;
 
-      // テーブル本体生成 & KPI計算
       let tbHtml = '';
       let dailyCounts = [0,0,0,0,0,0,0];
       let totalTeamHours = 0;
       let overlapDaysCount = 0;
 
-      // 各日の出勤人数を先にカウント（重複計算用）
       dates.forEach((d, idx) => {
         let workers = 0;
         staffConfig.forEach(staff => {
@@ -485,7 +575,7 @@
 
       staffConfig.forEach(staff => {
         let staffWeekHrs = 0;
-        const color = colorMap[staff.color];
+        const color = colorMap[staff.color] || colorMap.blue;
         
         tbHtml += `<tr>`;
         tbHtml += `
@@ -522,14 +612,13 @@
 
         tbHtml += `<td class="p-3.5 text-center font-bold text-slate-700 bg-slate-50/50">${staffWeekHrs.toFixed(1)}h</td></tr>`;
         
-        // KPI更新
         totalTeamHours += staffWeekHrs;
-        document.getElementById(`kpi-hrs-${staff.id}`).textContent = staffWeekHrs.toFixed(1);
+        const kpiEl = document.getElementById(`kpi-hrs-${staff.id}`);
+        if (kpiEl) kpiEl.textContent = staffWeekHrs.toFixed(1);
       });
 
       document.getElementById('scheduleTableBody').innerHTML = tbHtml;
       
-      // フッター（合計人数）
       let tfHtml = `<td class="p-3.5 text-slate-500 border-r border-slate-200">出勤人数 / 重複</td>`;
       dates.forEach((d, idx) => {
         const count = dailyCounts[idx];
@@ -542,11 +631,102 @@
       tfHtml += `<td class="p-3.5 text-center font-bold text-slate-400"></td>`;
       document.getElementById('tableFooterRow').innerHTML = tfHtml;
 
-      // KPI総合更新
       document.getElementById('totalTeamHours').textContent = totalTeamHours.toFixed(1);
       document.getElementById('overlapDays').textContent = overlapDaysCount;
 
       renderTimeline(dates);
+    }
+
+    function renderMonthCalendar() {
+      const year = currentBaseDate.getFullYear();
+      const month = currentBaseDate.getMonth(); // 0-based
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      document.getElementById('weekRangeLabel').textContent = `${year}年${month + 1}月 全体表示`;
+      document.getElementById('kpiScopeSubtitle').textContent = `${month + 1}月全体の合計`;
+
+      // 月初日の曜日（月曜始まりに換算: 日=6, 月=0, 火=1...）
+      let startDayOfWeek = firstDay.getDay() - 1;
+      if (startDayOfWeek === -1) startDayOfWeek = 6;
+
+      const totalDays = lastDay.getDate();
+      const grid = document.getElementById('monthCalendarGrid');
+      let html = '';
+
+      let totalMonthHours = 0;
+      let overlapMonthDays = 0;
+      let staffMonthHrs = {};
+      staffConfig.forEach(s => staffMonthHrs[s.id] = 0);
+
+      // 前月の余白埋め
+      for (let i = 0; i < startDayOfWeek; i++) {
+        html += `<div class="min-h-[100px] p-2 bg-slate-50/40 rounded-xl border border-dashed border-slate-200 opacity-40"></div>`;
+      }
+
+      // 当月の日付
+      for (let day = 1; day <= totalDays; day++) {
+        const mStr = String(month + 1).padStart(2, '0');
+        const dStr = String(day).padStart(2, '0');
+        const dateKey = `${year}-${mStr}-${dStr}`;
+
+        const dateObj = new Date(year, month, day);
+        let dIdx = dateObj.getDay() - 1;
+        if (dIdx === -1) dIdx = 6;
+
+        const colClass = getDayColorClass(dateKey, dIdx);
+
+        // その日のシフト取得
+        let dailyWorkers = [];
+        staffConfig.forEach(staff => {
+          const shift = shiftData[staff.id] ? shiftData[staff.id][dateKey] : null;
+          if (shift) {
+            dailyWorkers.push({ staff, shift });
+            staffMonthHrs[staff.id] += shift.hours;
+            totalMonthHours += shift.hours;
+          }
+        });
+
+        if (dailyWorkers.length >= 2) overlapMonthDays++;
+
+        let shiftsHtml = '';
+        dailyWorkers.forEach(({ staff, shift }) => {
+          const color = colorMap[staff.color] || colorMap.blue;
+          shiftsHtml += `
+            <div class="text-[11px] font-bold p-1 rounded-md ${color.light} ${color.text} border ${color.border} truncate mb-1">
+              ${staff.name.replace('さん', '')}: ${shift.start}-${shift.end}
+            </div>
+          `;
+        });
+
+        html += `
+          <div class="min-h-[110px] p-2 rounded-xl border border-slate-200/90 flex flex-col justify-between ${colClass.bg || 'bg-white'} hover:border-slate-300 transition-all">
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-sm font-extrabold ${colClass.text}">${day}</span>
+              ${dailyWorkers.length >= 2 ? `<span class="text-[10px] font-bold bg-rose-100 text-rose-600 px-1 rounded">重 ${dailyWorkers.length}</span>` : ''}
+            </div>
+            <div class="flex-1 overflow-y-auto max-h-[75px] space-y-1">
+              ${shiftsHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      // 翌月の余白埋め（7の倍数に揃える）
+      const remainingCells = (7 - ((startDayOfWeek + totalDays) % 7)) % 7;
+      for (let i = 0; i < remainingCells; i++) {
+        html += `<div class="min-h-[100px] p-2 bg-slate-50/40 rounded-xl border border-dashed border-slate-200 opacity-40"></div>`;
+      }
+
+      grid.innerHTML = html;
+
+      // 月間集計KPIの更新
+      document.getElementById('totalTeamHours').textContent = totalMonthHours.toFixed(1);
+      document.getElementById('overlapDays').textContent = overlapMonthDays;
+      staffConfig.forEach(staff => {
+        const kpiEl = document.getElementById(`kpi-hrs-${staff.id}`);
+        if (kpiEl) kpiEl.textContent = staffMonthHrs[staff.id].toFixed(1);
+      });
     }
 
     function renderTimeline(dates) {
@@ -556,7 +736,7 @@
 
       dates.forEach((d, idx) => {
         const workers = staffConfig.filter(s => shiftData[s.id] && shiftData[s.id][d.dateKey]);
-        if (workers.length === 0) return; // 出勤者なしの日はスキップ
+        if (workers.length === 0) return;
 
         const colClass = getDayColorClass(d.dateKey, idx);
         const dayLabelColor = colClass.text !== 'text-slate-500' ? colClass.text : 'text-slate-800';
@@ -577,7 +757,7 @@
 
         workers.forEach((staff, wIdx) => {
           const shift = shiftData[staff.id][d.dateKey];
-          const color = colorMap[staff.color];
+          const color = colorMap[staff.color] || colorMap.blue;
           const sDec = Math.max(13, timeToDecimal(shift.start));
           const eDec = Math.min(18, timeToDecimal(shift.end));
           
@@ -603,7 +783,80 @@
       container.innerHTML = html;
     }
 
-    // ▼ モーダル制御 ▼
+    function openStaffModal() {
+      renderStaffList();
+      document.getElementById('staffModal').classList.replace('hidden', 'flex');
+      lucide.createIcons();
+    }
+
+    function closeStaffModal() {
+      document.getElementById('staffModal').classList.replace('flex', 'hidden');
+    }
+
+    function renderStaffList() {
+      const container = document.getElementById('staffListContainer');
+      let html = '';
+      staffConfig.forEach((staff, idx) => {
+        const color = colorMap[staff.color] || colorMap.blue;
+        html += `
+          <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg text-sm">
+            <div class="flex items-center gap-2 overflow-hidden mr-2">
+              <div class="w-3 h-3 rounded-full ${color.bg} shrink-0"></div>
+              <span class="font-bold text-slate-700 shrink-0">${staff.name}</span>
+              <span class="text-xs text-slate-400 truncate max-w-[240px]">${staff.url}</span>
+            </div>
+            <button onclick="handleDeleteStaff(${idx})" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 shrink-0">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      lucide.createIcons();
+    }
+
+    function handleAddStaff() {
+      const name = document.getElementById('newStaffName').value.trim();
+      const color = document.getElementById('newStaffColor').value;
+      const url = document.getElementById('newStaffUrl').value.trim();
+
+      if (!name || !url) {
+        alert('名前とスプレッドシートURLを入力してください。');
+        return;
+      }
+
+      const id = 'staff_' + Date.now();
+      staffConfig.push({ id, name, color, url });
+      saveStaffConfig();
+
+      document.getElementById('newStaffName').value = '';
+      document.getElementById('newStaffUrl').value = '';
+
+      updateKpiCardsUI();
+      renderStaffList();
+      handleRefresh();
+    }
+
+    function handleDeleteStaff(idx) {
+      if (confirm(`${staffConfig[idx].name} を削除しますか？`)) {
+        staffConfig.splice(idx, 1);
+        saveStaffConfig();
+        updateKpiCardsUI();
+        renderStaffList();
+        handleRefresh();
+      }
+    }
+
+    function resetDefaultStaff() {
+      if (confirm('初期設定（町田さん・山中さん）に戻しますか？')) {
+        staffConfig = [...defaultStaff];
+        saveStaffConfig();
+        updateKpiCardsUI();
+        renderStaffList();
+        handleRefresh();
+      }
+    }
+
     function openDiagnosticModal() {
       const content = document.getElementById('diagnosticContent');
       let html = '';
@@ -615,7 +868,7 @@
           return;
         }
 
-        const color = colorMap[staff.color];
+        const color = colorMap[staff.color] || colorMap.blue;
         html += `
           <div class="border border-slate-200 rounded-xl overflow-hidden">
             <div class="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
@@ -627,7 +880,7 @@
             </div>
             <div class="p-4 text-sm">
               <p class="text-slate-600 mb-2">${log.message}</p>
-              ${log.logs.length > 0 ? `
+              ${log.logs && log.logs.length > 0 ? `
                 <table class="w-full text-xs text-left mt-3">
                   <thead class="text-slate-400 border-b"><tr><th class="pb-1">抽出日付</th><th class="pb-1">抽出時間</th><th class="pb-1">結果</th></tr></thead>
                   <tbody class="divide-y divide-slate-100">
@@ -642,6 +895,7 @@
 
       content.innerHTML = html;
       document.getElementById('diagnosticModal').classList.replace('hidden', 'flex');
+      lucide.createIcons();
     }
 
     function closeDiagnosticModal() {
