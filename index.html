@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>㈱Inbalink シフト一覧</title>
+  <title>㈱Inbalink シフトダッシュボード</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -14,7 +14,6 @@
 </head>
 <body class="p-4 md:p-8 text-slate-800">
   
-  <!-- ヘッダー -->
   <header class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
     <div class="flex items-center gap-3">
       <div class="bg-rose-600 p-2.5 rounded-xl text-white">
@@ -22,10 +21,10 @@
       </div>
       <div>
         <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          ㈱Inbalink シフト一覧
+          ㈱Inbalink シフトダッシュボード
           <span class="text-xs font-medium bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200">リアルタイム自動連携</span>
         </h1>
-        <p class="text-sm text-slate-500">Googleスプレッドシート直結管理</p>
+        <p class="text-sm text-slate-500">Googleスプレッドシート直結管理（13:00〜18:00・30分単位）</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -33,7 +32,7 @@
         <i data-lucide="refresh-cw" class="w-4 h-4"></i> 最新データに更新
       </button>
       <button onclick="openStaffModal()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-all">
-        <i data-lucide="user-plus" class="w-4 h-4 text-rose-600"></i> ワーカー追加・管理
+        <i data-lucide="user-plus" class="w-4 h-4 text-rose-600"></i> スタッフ・時給管理
       </button>
       <button onclick="openDiagnosticModal()" class="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition-all">
         <i data-lucide="search" class="w-4 h-4"></i> 同期データ診断
@@ -44,43 +43,51 @@
     </div>
   </header>
 
-  <!-- メインコンテンツ -->
   <main class="max-w-6xl mx-auto space-y-6">
     
-    <!-- KPIカード領域 -->
-    <div id="kpiCardsContainer" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div id="kpiCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      
+      <div class="glass-card p-5 border-l-4 border-l-emerald-600 bg-emerald-50/20">
+        <div class="flex justify-between items-start mb-2">
+          <h3 class="text-xs font-bold text-slate-500">概算人件費合計</h3>
+          <i data-lucide="japanese-yen" class="w-4 h-4 text-emerald-600"></i>
+        </div>
+        <div class="flex items-baseline gap-1">
+          <span id="totalLaborCost" class="text-2xl lg:text-3xl font-extrabold text-emerald-700">¥0</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1" id="costScopeSubtitle">表示中の週の合計</p>
+      </div>
+
       <div class="glass-card p-5 border-l-4 border-l-slate-800">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-bold text-slate-500" id="kpiScopeTitle">チーム総稼働時間</h3>
+          <h3 class="text-xs font-bold text-slate-500">チーム総稼働時間</h3>
           <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
         </div>
         <div class="flex items-baseline gap-1">
-          <span id="totalTeamHours" class="text-3xl font-extrabold text-slate-800">0.0</span>
-          <span class="text-sm font-bold text-slate-500">時間</span>
+          <span id="totalTeamHours" class="text-2xl lg:text-3xl font-extrabold text-slate-800">0.0</span>
+          <span class="text-xs font-bold text-slate-500">時間</span>
         </div>
-        <p class="text-xs text-slate-400 mt-1" id="kpiScopeSubtitle">表示中の週の合計</p>
+        <p class="text-[11px] text-slate-400 mt-1" id="hoursScopeSubtitle">表示中の週の合計</p>
       </div>
       
       <div class="glass-card p-5 border-l-4 border-l-rose-500">
         <div class="flex justify-between items-start mb-2">
-          <h3 class="text-sm font-bold text-slate-500">複数名出勤</h3>
+          <h3 class="text-xs font-bold text-slate-500">複数名出勤（重複）</h3>
           <i data-lucide="users" class="w-4 h-4 text-rose-400"></i>
         </div>
         <div class="flex items-baseline gap-1">
-          <span id="overlapDays" class="text-3xl font-extrabold text-rose-600">0</span>
-          <span class="text-sm font-bold text-slate-500">日間</span>
+          <span id="overlapDays" class="text-2xl lg:text-3xl font-extrabold text-rose-600">0</span>
+          <span class="text-xs font-bold text-slate-500">日間</span>
         </div>
-        <p class="text-xs text-slate-400 mt-1">手厚い稼働日</p>
+        <p class="text-[11px] text-slate-400 mt-1">協力・手厚い稼働日</p>
       </div>
       
       <div id="staffKpiInjectionPoint" class="contents"></div>
     </div>
 
-    <!-- カレンダー・タイムライン切替領域 -->
     <div class="glass-card p-6">
       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         
-        <!-- ナビゲーションバー -->
         <div class="inline-flex items-center gap-3 p-1.5 px-3 bg-slate-50/80 border border-slate-200/80 rounded-2xl shadow-sm">
           <div class="relative">
             <select id="monthSelect" onchange="handleMonthChange(this.value)" class="appearance-none bg-white border border-rose-400 text-rose-700 font-bold text-sm rounded-xl pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-200 cursor-pointer shadow-sm">
@@ -110,7 +117,6 @@
           </div>
         </div>
 
-        <!-- 表示切り替えボタングループ（月間カレンダーを追加） -->
         <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
           <button id="btnViewTable" onclick="switchView('table')" class="px-3 py-1.5 text-sm font-bold rounded-md bg-white shadow-sm text-slate-800 transition-all">週間一覧</button>
           <button id="btnViewTimeline" onclick="switchView('timeline')" class="px-3 py-1.5 text-sm font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all">タイムライン (13-18時)</button>
@@ -118,7 +124,6 @@
         </div>
       </div>
 
-      <!-- 週間テーブルビュー -->
       <div id="viewTable" class="overflow-x-auto">
         <table class="w-full border-collapse min-w-[800px]">
           <thead>
@@ -135,12 +140,10 @@
         </table>
       </div>
 
-      <!-- タイムラインビュー -->
       <div id="viewTimeline" class="hidden">
         <div id="timelineContainer" class="space-y-6"></div>
       </div>
 
-      <!-- 月間カレンダービュー -->
       <div id="viewMonth" class="hidden">
         <div class="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center text-xs font-bold py-2 mb-2 rounded-t-lg">
           <div class="text-slate-600">月</div>
@@ -156,12 +159,11 @@
     </div>
   </main>
 
-  <!-- スタッフ追加・管理モーダル -->
   <div id="staffModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
         <h2 class="font-bold text-lg text-slate-800 flex items-center gap-2">
-          <i data-lucide="user-plus" class="w-5 h-5 text-rose-600"></i> スタッフ追加・管理
+          <i data-lucide="user-plus" class="w-5 h-5 text-rose-600"></i> スタッフ・時給管理
         </h2>
         <button onclick="closeStaffModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
       </div>
@@ -169,9 +171,15 @@
       <div class="p-6 overflow-y-auto flex-1 space-y-6">
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
           <h3 class="text-sm font-bold text-slate-700">新規スタッフ登録</h3>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 mb-1">スタッフ表示名</label>
-            <input type="text" id="newStaffName" placeholder="例: 田中さん" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">スタッフ表示名</label>
+              <input type="text" id="newStaffName" placeholder="例: 田中さん" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-1">時給（円）</label>
+              <input type="number" id="newStaffWage" placeholder="1500" value="1500" min="0" step="50" class="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 bg-white font-bold">
+            </div>
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-500 mb-1">識別カラー</label>
@@ -193,7 +201,8 @@
         </div>
 
         <div>
-          <h3 class="text-sm font-bold text-slate-700 mb-3">登録中スタッフ一覧</h3>
+          <h3 class="text-sm font-bold text-slate-700 mb-2">登録中スタッフと時給</h3>
+          <p class="text-xs text-slate-400 mb-3">各スタッフの時給は入力欄から直接変更できます。</p>
           <div id="staffListContainer" class="space-y-2"></div>
         </div>
       </div>
@@ -205,7 +214,6 @@
     </div>
   </div>
 
-  <!-- 同期データ診断モーダル -->
   <div id="diagnosticModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
       <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -219,13 +227,19 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "inbalink_staff_list_v1";
+    const DEFAULT_WAGE = 1500;
+    const STORAGE_KEY = "inbalink_staff_list_v3";
     const defaultStaff = [
-      { id: 'machida', name: '町田さん', color: 'blue', url: 'https://docs.google.com/spreadsheets/d/1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc/edit?gid=354556482#gid=354556482' },
-      { id: 'yamanaka', name: '山中さん', color: 'rose', url: 'https://docs.google.com/spreadsheets/d/1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM/edit?gid=712987012#gid=712987012' }
+      { id: 'machida', name: '町田さん', color: 'blue', hourlyWage: DEFAULT_WAGE, url: 'https://docs.google.com/spreadsheets/d/1n2wpxJORZYjYQN3cRRyy2ONuvsqR36LYffJYLjskarc/edit?gid=354556482#gid=354556482' },
+      { id: 'yamanaka', name: '山中さん', color: 'rose', hourlyWage: DEFAULT_WAGE, url: 'https://docs.google.com/spreadsheets/d/1KS1yanrIfaSyLTumRqdgfUSRI_MsQEMm5JooaXAVnJM/edit?gid=712987012#gid=712987012' }
     ];
 
     let staffConfig = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultStaff;
+
+    staffConfig = staffConfig.map(s => ({
+      ...s,
+      hourlyWage: s.hourlyWage !== undefined ? Number(s.hourlyWage) : DEFAULT_WAGE
+    }));
 
     function saveStaffConfig() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(staffConfig));
@@ -256,7 +270,7 @@
     }
 
     let shiftData = {}; 
-    let currentBaseDate = new Date(2026, 8, 14); // 2026-09-14基準
+    let currentBaseDate = new Date(2026, 8, 14);
     let currentView = 'table';
     let diagnosticLogs = {};
 
@@ -515,15 +529,24 @@
       let html = '';
       staffConfig.forEach(staff => {
         const color = colorMap[staff.color] || colorMap.blue;
+        const wage = staff.hourlyWage || DEFAULT_WAGE;
         html += `
           <div class="glass-card p-5 border-t-4 border-t-${staff.color}-500 flex flex-col justify-between">
             <div class="flex justify-between items-start mb-2">
-              <h3 class="text-sm font-bold text-slate-500">${staff.name}</h3>
+              <div>
+                <h3 class="text-xs font-bold text-slate-700">${staff.name}</h3>
+                <span class="text-[10px] text-slate-400 font-bold">@¥${wage.toLocaleString()}/h</span>
+              </div>
               <div class="w-3 h-3 rounded-full ${color.bg}"></div>
             </div>
-            <div class="flex items-baseline gap-1 mt-auto">
-              <span id="kpi-hrs-${staff.id}" class="text-3xl font-extrabold text-slate-800">0.0</span>
-              <span class="text-sm font-bold text-slate-500">時間</span>
+            <div class="mt-2">
+              <div class="flex items-baseline gap-1">
+                <span id="kpi-hrs-${staff.id}" class="text-2xl lg:text-3xl font-extrabold text-slate-800">0.0</span>
+                <span class="text-xs font-bold text-slate-500">時間</span>
+              </div>
+              <div class="text-xs font-bold text-emerald-600 mt-1" id="kpi-cost-${staff.id}">
+                ¥0
+              </div>
             </div>
           </div>
         `;
@@ -545,7 +568,8 @@
       const dayHeaders = ['月', '火', '水', '木', '金', '土', '日'];
       
       document.getElementById('weekRangeLabel').textContent = `${dates[0].year}年${dates[0].month}月${dates[0].date}日 〜 ${dates[6].month}月${dates[6].date}日`;
-      document.getElementById('kpiScopeSubtitle').textContent = "表示中の週の合計";
+      document.getElementById('hoursScopeSubtitle').textContent = "表示中の週の合計";
+      document.getElementById('costScopeSubtitle').textContent = "表示中の週の合計";
 
       let thHtml = `<th class="p-3.5 text-left text-sm font-bold text-slate-500 w-48 border-r border-slate-200">スタッフ名</th>`;
       dates.forEach((d, idx) => {
@@ -563,6 +587,7 @@
       let tbHtml = '';
       let dailyCounts = [0,0,0,0,0,0,0];
       let totalTeamHours = 0;
+      let totalLaborCost = 0;
       let overlapDaysCount = 0;
 
       dates.forEach((d, idx) => {
@@ -576,13 +601,17 @@
       staffConfig.forEach(staff => {
         let staffWeekHrs = 0;
         const color = colorMap[staff.color] || colorMap.blue;
+        const wage = staff.hourlyWage || DEFAULT_WAGE;
         
         tbHtml += `<tr>`;
         tbHtml += `
           <td class="p-3.5 border-r border-slate-100">
             <div class="flex items-center gap-2">
               <div class="w-3 h-3 rounded-full ${color.bg}"></div>
-              <span class="font-bold text-slate-700">${staff.name}</span>
+              <div>
+                <span class="font-bold text-slate-700 block">${staff.name}</span>
+                <span class="text-[10px] text-slate-400">@¥${wage.toLocaleString()}/h</span>
+              </div>
             </div>
           </td>
         `;
@@ -610,11 +639,22 @@
           }
         });
 
-        tbHtml += `<td class="p-3.5 text-center font-bold text-slate-700 bg-slate-50/50">${staffWeekHrs.toFixed(1)}h</td></tr>`;
+        const staffCost = Math.round(staffWeekHrs * wage);
+        tbHtml += `
+          <td class="p-3.5 text-center bg-slate-50/50">
+            <div class="font-bold text-slate-700">${staffWeekHrs.toFixed(1)}h</div>
+            <div class="text-[11px] font-bold text-emerald-600">¥${staffCost.toLocaleString()}</div>
+          </td>
+        </tr>`;
         
         totalTeamHours += staffWeekHrs;
+        totalLaborCost += staffCost;
+
         const kpiEl = document.getElementById(`kpi-hrs-${staff.id}`);
         if (kpiEl) kpiEl.textContent = staffWeekHrs.toFixed(1);
+
+        const costEl = document.getElementById(`kpi-cost-${staff.id}`);
+        if (costEl) costEl.textContent = `¥${staffCost.toLocaleString()}`;
       });
 
       document.getElementById('scheduleTableBody').innerHTML = tbHtml;
@@ -632,6 +672,7 @@
       document.getElementById('tableFooterRow').innerHTML = tfHtml;
 
       document.getElementById('totalTeamHours').textContent = totalTeamHours.toFixed(1);
+      document.getElementById('totalLaborCost').textContent = `¥${totalLaborCost.toLocaleString()}`;
       document.getElementById('overlapDays').textContent = overlapDaysCount;
 
       renderTimeline(dates);
@@ -639,14 +680,14 @@
 
     function renderMonthCalendar() {
       const year = currentBaseDate.getFullYear();
-      const month = currentBaseDate.getMonth(); // 0-based
+      const month = currentBaseDate.getMonth();
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
 
       document.getElementById('weekRangeLabel').textContent = `${year}年${month + 1}月 全体表示`;
-      document.getElementById('kpiScopeSubtitle').textContent = `${month + 1}月全体の合計`;
+      document.getElementById('hoursScopeSubtitle').textContent = `${month + 1}月全体の合計`;
+      document.getElementById('costScopeSubtitle').textContent = `${month + 1}月全体の合計`;
 
-      // 月初日の曜日（月曜始まりに換算: 日=6, 月=0, 火=1...）
       let startDayOfWeek = firstDay.getDay() - 1;
       if (startDayOfWeek === -1) startDayOfWeek = 6;
 
@@ -655,16 +696,15 @@
       let html = '';
 
       let totalMonthHours = 0;
+      let totalMonthLaborCost = 0;
       let overlapMonthDays = 0;
       let staffMonthHrs = {};
       staffConfig.forEach(s => staffMonthHrs[s.id] = 0);
 
-      // 前月の余白埋め
       for (let i = 0; i < startDayOfWeek; i++) {
         html += `<div class="min-h-[100px] p-2 bg-slate-50/40 rounded-xl border border-dashed border-slate-200 opacity-40"></div>`;
       }
 
-      // 当月の日付
       for (let day = 1; day <= totalDays; day++) {
         const mStr = String(month + 1).padStart(2, '0');
         const dStr = String(day).padStart(2, '0');
@@ -676,7 +716,6 @@
 
         const colClass = getDayColorClass(dateKey, dIdx);
 
-        // その日のシフト取得
         let dailyWorkers = [];
         staffConfig.forEach(staff => {
           const shift = shiftData[staff.id] ? shiftData[staff.id][dateKey] : null;
@@ -712,7 +751,6 @@
         `;
       }
 
-      // 翌月の余白埋め（7の倍数に揃える）
       const remainingCells = (7 - ((startDayOfWeek + totalDays) % 7)) % 7;
       for (let i = 0; i < remainingCells; i++) {
         html += `<div class="min-h-[100px] p-2 bg-slate-50/40 rounded-xl border border-dashed border-slate-200 opacity-40"></div>`;
@@ -720,13 +758,22 @@
 
       grid.innerHTML = html;
 
-      // 月間集計KPIの更新
-      document.getElementById('totalTeamHours').textContent = totalMonthHours.toFixed(1);
-      document.getElementById('overlapDays').textContent = overlapMonthDays;
       staffConfig.forEach(staff => {
+        const hrs = staffMonthHrs[staff.id];
+        const wage = staff.hourlyWage || DEFAULT_WAGE;
+        const cost = Math.round(hrs * wage);
+        totalMonthLaborCost += cost;
+
         const kpiEl = document.getElementById(`kpi-hrs-${staff.id}`);
-        if (kpiEl) kpiEl.textContent = staffMonthHrs[staff.id].toFixed(1);
+        if (kpiEl) kpiEl.textContent = hrs.toFixed(1);
+
+        const costEl = document.getElementById(`kpi-cost-${staff.id}`);
+        if (costEl) costEl.textContent = `¥${cost.toLocaleString()}`;
       });
+
+      document.getElementById('totalTeamHours').textContent = totalMonthHours.toFixed(1);
+      document.getElementById('totalLaborCost').textContent = `¥${totalMonthLaborCost.toLocaleString()}`;
+      document.getElementById('overlapDays').textContent = overlapMonthDays;
     }
 
     function renderTimeline(dates) {
@@ -798,16 +845,25 @@
       let html = '';
       staffConfig.forEach((staff, idx) => {
         const color = colorMap[staff.color] || colorMap.blue;
+        const wage = staff.hourlyWage || DEFAULT_WAGE;
         html += `
-          <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg text-sm">
-            <div class="flex items-center gap-2 overflow-hidden mr-2">
+          <div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg text-sm gap-2">
+            <div class="flex items-center gap-2 overflow-hidden flex-1">
               <div class="w-3 h-3 rounded-full ${color.bg} shrink-0"></div>
               <span class="font-bold text-slate-700 shrink-0">${staff.name}</span>
-              <span class="text-xs text-slate-400 truncate max-w-[240px]">${staff.url}</span>
+              <span class="text-xs text-slate-400 truncate hidden sm:inline max-w-[140px]">${staff.url}</span>
             </div>
-            <button onclick="handleDeleteStaff(${idx})" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 shrink-0">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+            
+            <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                <span class="text-xs text-slate-500 font-bold">¥</span>
+                <input type="number" value="${wage}" min="0" step="50" onchange="handleUpdateWage(${idx}, this.value)" class="w-16 text-xs font-bold text-slate-700 bg-transparent focus:outline-none text-right">
+                <span class="text-xs text-slate-400">/h</span>
+              </div>
+              <button onclick="handleDeleteStaff(${idx})" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
         `;
       });
@@ -815,9 +871,17 @@
       lucide.createIcons();
     }
 
+    function handleUpdateWage(idx, newWage) {
+      staffConfig[idx].hourlyWage = Number(newWage) || 0;
+      saveStaffConfig();
+      updateKpiCardsUI();
+      renderDashboard();
+    }
+
     function handleAddStaff() {
       const name = document.getElementById('newStaffName').value.trim();
       const color = document.getElementById('newStaffColor').value;
+      const hourlyWage = Number(document.getElementById('newStaffWage').value) || DEFAULT_WAGE;
       const url = document.getElementById('newStaffUrl').value.trim();
 
       if (!name || !url) {
@@ -826,11 +890,12 @@
       }
 
       const id = 'staff_' + Date.now();
-      staffConfig.push({ id, name, color, url });
+      staffConfig.push({ id, name, color, hourlyWage, url });
       saveStaffConfig();
 
       document.getElementById('newStaffName').value = '';
       document.getElementById('newStaffUrl').value = '';
+      document.getElementById('newStaffWage').value = String(DEFAULT_WAGE);
 
       updateKpiCardsUI();
       renderStaffList();
